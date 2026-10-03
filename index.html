@@ -56,7 +56,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; scroll-padding-top: 96px; }
+html { scroll-padding-top: 96px; }
 
 body {
   margin: 0;
@@ -88,10 +88,10 @@ button, input, select { font: inherit; color: inherit; }
 .topbar__sub { color: #A9BAC7; font-size: 12px; margin-top: 3px; }
 
 .topbar__nav { display: flex; gap: 4px; margin-left: 8px; }
-.topbar__nav a {
-  color: #CFDAE3; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-weight: 500;
+.topbar__nav .navlink {
+  color: #CFDAE3; background: none; border: 0; cursor: pointer; padding: 8px 12px; border-radius: 4px; font-weight: 500;
 }
-.topbar__nav a:hover { background: var(--graphite-2); color: #fff; }
+.topbar__nav .navlink:hover { background: var(--graphite-2); color: #fff; }
 
 .topbar__acoes { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
 .arquivo { display: flex; flex-direction: column; min-width: 190px; max-width: 280px; margin-left: 6px; }
@@ -368,19 +368,16 @@ button.tile:hover { border-color: var(--ink-3); }
     </div>
 
     <nav class="topbar__nav" aria-label="Seções">
-      <a href="#indicadores">Indicadores</a>
-      <a href="#graficos">Gráficos</a>
-      <a href="#equipamentos">Equipamentos</a>
-      <a href="#validacao">Validação</a>
+      <button type="button" class="navlink" data-alvo="indicadores">Indicadores</button>
+      <button type="button" class="navlink" data-alvo="graficos">Gráficos</button>
+      <button type="button" class="navlink" data-alvo="equipamentos">Equipamentos</button>
+      <button type="button" class="navlink" data-alvo="validacao">Validação</button>
     </nav>
 
     <div class="topbar__acoes">
-      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden>
-      <button type="button" id="btnSelecionar" class="btn btn--primario">📁 Selecionar planilha</button>
-      <button type="button" id="btnAtualizar" class="btn btn--claro">🔄 Atualizar dados</button>
       <div class="arquivo" aria-live="polite">
-        <span class="arquivo__nome" id="arquivoNome">Nenhuma planilha carregada</span>
-        <span class="arquivo__detalhe" id="arquivoDetalhe">Selecione o arquivo Base_Cali.xlsx</span>
+        <span class="arquivo__nome" id="arquivoNome">Base_Cali.xlsx</span>
+        <span class="arquivo__detalhe" id="arquivoDetalhe"></span>
       </div>
     </div>
   </header>
@@ -389,22 +386,6 @@ button.tile:hover { border-color: var(--ink-3); }
 
     <!-- Mensagens de validação / erros de importação -->
     <section id="validacao" class="validacao" aria-label="Validação da planilha" hidden></section>
-
-    <!-- Estado inicial: nada carregado (nenhum dado fictício é exibido) -->
-    <section id="estadoVazio" class="vazio">
-      <h2>Carregue a planilha para começar</h2>
-      <p>Use <strong>📁 Selecionar planilha</strong> (ou arraste o arquivo para esta página) e escolha o <strong>Base_Cali.xlsx</strong>. Todo o processamento acontece no seu navegador; nada é enviado para servidores.</p>
-      <div class="vazio__colunas">
-        <div>
-          <h3>Aba “Base”</h3>
-          <p>ID_equipamento, Material, Instrumento, Data última Calibração, Plano, Custo, Situação</p>
-        </div>
-        <div>
-          <h3>Aba “Equipamentos”</h3>
-          <p>ID_equipamento, Instrumento, Setor</p>
-        </div>
-      </div>
-    </section>
 
     <!-- ===================== PAINEL (aparece após importar) ===================== -->
     <div id="painel" hidden>
@@ -628,14 +609,15 @@ button.tile:hover { border-color: var(--ink-3); }
   </main>
 
   <footer class="rodape">
-    Os dados ficam apenas na memória do navegador e são descartados ao fechar a página.
+    Os dados deste painel estão embutidos neste arquivo e são processados no seu navegador; nada é enviado para servidores.
   </footer>
 
-  <!-- Bibliotecas via CDN (versões fixas; se o cdnjs falhar, tenta o jsDelivr) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
-          onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';document.head.appendChild(s)"></script>
+  <!-- Chart.js via CDN (se o cdnjs falhar, tenta o jsDelivr) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
           onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';document.head.appendChild(s)"></script>
+  <!-- DADOS DA PLANILHA Base_Cali.xlsx (abas "Base" e "Equipamentos"; datas como número serial do Excel).
+       Para atualizar o painel, substitua o conteúdo JSON abaixo. -->
+  <script id="dadosPlanilha" type="application/json">{"arquivo":"Base_Cali.xlsx","atualizadoEm":"03/10/2026","abas":{"Base":[["ID_equipamento","Material","Instrumento","Data última Calibração","Plano","Custo","Situação"],["ENG-00001",20203526,"Alicate Amperímetro Fluke-302",46167,"1A",300,"Em calibração"],["ENG-00002",20203526,"Alicate Amperímetro Fluke-302",46175,"1A",300,"Em uso"],["ENG-00003",20203526,"Alicate Amperímetro Fluke-302",46175,"1A",300,"Em uso"],["ENG-00004",20203526,"Alicate Amperímetro Fluke-302",46175,"1A",300,"Em uso"],["ENG-00005",20203526,"Alicate Amperímetro Fluke-302",46206,"1A",300,"Em uso"],["ENG-00006",20203526,"Alicate Amperímetro Fluke-302",46207,"1A",300,"Em uso"],["ENG-00007",20203526,"Alicate Amperímetro Fluke-302",46086,"1A",300,"Em uso"],["ENG-00008",20203526,"Alicate Amperímetro Fluke-302",46087,"1A",300,"Em uso"],["ENG-00009",20203526,"Alicate Amperímetro Fluke-302",46119,"1A",300,"Em uso"],["ENG-00010",20203526,"Alicate Amperímetro Fluke-302",46089,"1A",300,"Sucata"],["ENG-00011",20203526,"Alicate Amperímetro Fluke-302",46182,"1A",300,"Em uso"],["ENG-00012",20203526,"Alicate Amperímetro Fluke-302",46183,"1A",300,"Em uso"],["ENG-00013",43679530,"Multímetro Digital 107 FLUKE",46184,"1A",400,"Em uso"],["ENG-00014",43679530,"Multímetro Digital 107 FLUKE",46154,"1A",400,"Em uso"],["ENG-00015",43679530,"Multímetro Digital 107 FLUKE",46186,"1A",400,"Em uso"],["ENG-00016",43679530,"Multímetro Digital 107 FLUKE",46187,"1A",400,"Em uso"],["ENG-00017",43679530,"Multímetro Digital 107 FLUKE",46188,"1A",400,"Em uso"],["ENG-00018",43679530,"Multímetro Digital 107 FLUKE",46189,"1A",400,"Em uso"],["ENG-00019",43679530,"Multímetro Digital 107 FLUKE",46129,"1A",400,"Em uso"],["ENG-00020",43679530,"Multímetro Digital 107 FLUKE",46071,"1A",400,"Em uso"],["ENG-00021",43679530,"Multímetro Digital 107 FLUKE",46101,"1A",400,"Em uso"],["ENG-00022",43679530,"Multímetro Digital 107 FLUKE",46193,"1A",400,"Em uso"],["ENG-00023",43679530,"Multímetro Digital 107 FLUKE",46194,"1A",400,"Em uso"],["ENG-00024",43679530,"Multímetro Digital 107 FLUKE",46195,"1A",400,"Em uso"],["ENG-00025",43679530,"Multímetro Digital 107 FLUKE",46196,"1A",400,"Em uso"],["ENG-00026",43679530,"Multímetro Digital 107 FLUKE",46197,"1A",400,"Em uso"],["ENG-00027",603025640,"Alicate Amperímetro Et-3155 Minipa",46198,"1A",200,"Em uso"],["ENG-00028",603025640,"Alicate Amperímetro Et-3155 Minipa",46199,"1A",200,"Em uso"],["ENG-00029",603025640,"Alicate Amperímetro Et-3155 Minipa",46080,"1A",200,"Em uso"],["ENG-00030",603025640,"Alicate Amperímetro Et-3155 Minipa",46081,"1A",200,"Em uso"],["ENG-00031",603025640,"Alicate Amperímetro Et-3155 Minipa",46202,"1A",200,"Em uso"],["ENG-00032",603025640,"Alicate Amperímetro Et-3155 Minipa",46203,"1A",200,"Em uso"],["ENG-00033",603025640,"Alicate Amperímetro Et-3155 Minipa",46204,"1A",200,"Em uso"],["ENG-00034",603025640,"Alicate Amperímetro Et-3155 Minipa",46205,"1A",200,"Em uso"],["ENG-00035",603025640,"Alicate Amperímetro Et-3155 Minipa",46206,"1A",200,"Em uso"],["ENG-00036",603025640,"Alicate Amperímetro Et-3155 Minipa",46207,"1A",200,"Em uso"],["ENG-00037",603025640,"Alicate Amperímetro Et-3155 Minipa",46208,"1A",200,"Em uso"],["ENG-00038",603025640,"Alicate Amperímetro Et-3155 Minipa",45844,"1A",200,"Em uso"],["ENG-00039",603025640,"Alicate Amperímetro Et-3155 Minipa",46210,"1A",200,"Em uso"],["ENG-00040",603025640,"Alicate Amperímetro Et-3155 Minipa",46211,"1A",200,"Em uso"],["ENG-00041",603025640,"Alicate Amperímetro Et-3155 Minipa",46212,"1A",200,"Em uso"],["ENG-00042",603025640,"Alicate Amperímetro Et-3155 Minipa",46032,"1A",200,"Em uso"],["ENG-00043",603025640,"Alicate Amperímetro Et-3155 Minipa",46123,"1A",200,"Em uso"],["ENG-00044",603025640,"Alicate Amperímetro Et-3155 Minipa",46215,"1A",200,"Em uso"],["ENG-00045",603025640,"Alicate Amperímetro Et-3155 Minipa",46216,"1A",200,"Em uso"],["ENG-00046",603025640,"Alicate Amperímetro Et-3155 Minipa",46217,"1A",200,"Em uso"],["ENG-00047",405726587,"Multímetro digital portátil - ET-2082E",46218,"1A",350,"Em uso"],["ENG-00048",405726587,"Multímetro digital portátil - ET-2082E",46219,"1A",350,"Em uso"],["ENG-00049",405726587,"Multímetro digital portátil - ET-2082E",46220,"1A",350,"Em uso"],["ENG-00050",405726587,"Multímetro digital portátil - ET-2082E",46040,"1A",350,"Em uso"],["ENG-00051",405726587,"Multímetro digital portátil - ET-2082E",46192,"1A",350,"Em uso"],["ENG-00052",405726587,"Multímetro digital portátil - ET-2082E",46223,"1A",350,"Em uso"],["ENG-00053",405726587,"Multímetro digital portátil - ET-2082E",46224,"1A",350,"Em uso"],["ENG-00054",405726587,"Multímetro digital portátil - ET-2082E",46225,"1A",350,"Em uso"],["ENG-00055",405726587,"Multímetro digital portátil - ET-2082E",46226,"1A",350,"Em uso"],["ENG-00056",405726587,"Multímetro digital portátil - ET-2082E",46227,"1A",350,"Em uso"],["ENG-00057",405726587,"Multímetro digital portátil - ET-2082E",46228,"1A",350,"Em uso"],["ENG-00058",405726587,"Multímetro digital portátil - ET-2082E",46229,"1A",350,"Em uso"],["ENG-00059",405726587,"Multímetro digital portátil - ET-2082E",46230,"1A",350,"Em uso"],["ENG-00060",405726587,"Multímetro digital portátil - ET-2082E",46231,"1A",350,"Em uso"],["ENG-00061",405726587,"Multímetro digital portátil - ET-2082E",45867,"1A",350,"Em uso"],["ENG-00062",405726587,"Multímetro digital portátil - ET-2082E",46233,"1A",350,"Em uso"],["ENG-00063",252064874,"Paquímetro Universal 150mm - 6\"",46234,"2A",100,"Em uso"],["ENG-00064",252064874,"Paquímetro Universal 150mm - 6\"",46235,"2A",100,"Em uso"],["ENG-00065",252064874,"Paquímetro Universal 150mm - 6\"",46236,"2A",100,"Em uso"],["ENG-00066",252064874,"Paquímetro Universal 150mm - 6\"",46237,"2A",100,"Em uso"],["ENG-00067",252064874,"Paquímetro Universal 150mm - 6\"",46238,"2A",100,"Em uso"],["ENG-00068",252064874,"Paquímetro Universal 150mm - 6\"",46239,"2A",100,"Em uso"],["ENG-00069",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46240,"2A",150,"Em uso"],["ENG-00070",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46241,"2A",150,"Em uso"],["ENG-00071",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46242,"2A",150,"Em uso"],["ENG-00072",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46243,"2A",150,"Em uso"],["ENG-00073",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46122,"2A",150,"Em uso"],["ENG-00074",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46245,"2A",150,"Em uso"],["ENG-00075",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46246,"2A",150,"Em uso"],["ENG-00076",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46247,"2A",150,"Em uso"],["ENG-00077",252064884,"Paquímetro Digital Mitutoyo Modelo 500-196-20B",46248,"2A",150,"Em uso"],["ENG-00078",454585918,"Megometro Digital Mi 2702 Minipa 2500v",46249,"1A",600,"Em uso"],["ENG-00079",454585919,"Megômetro Digital Minipa MI-2710",46250,"1A",700,"Em uso"],["ENG-00080",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46251,"1A",150,"Em uso"],["ENG-00081",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46252,"1A",150,"Em uso"],["ENG-00082",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46253,"1A",150,"Em uso"],["ENG-00083",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46254,"1A",150,"Em uso"],["ENG-00084",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46255,"1A",150,"Em uso"],["ENG-00085",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46256,"1A",150,"Em uso"],["ENG-00086",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46257,"1A",150,"Em uso"],["ENG-00087",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46258,"1A",150,"Em uso"],["ENG-00088",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46259,"1A",150,"Em uso"],["ENG-00089",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46260,"1A",150,"Em uso"],["ENG-00090",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46261,"1A",150,"Em uso"],["ENG-00091",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46262,"1A",150,"Em uso"],["ENG-00092",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46263,"1A",150,"Em uso"],["ENG-00093",445092010,"Torquimetro De Estalo 5-50nm Tramontina",46264,"1A",150,"Em uso"],["ENG-00094",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46265,"1A",200,"Em uso"],["ENG-00095",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46266,"1A",200,"Em uso"],["ENG-00096",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46083,"1A",200,"Em uso"],["ENG-00097",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46268,"1A",200,"Em uso"],["ENG-00098",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",45904,"1A",200,"Em calibração"],["ENG-00099",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46270,"1A",200,"Em uso"],["ENG-00100",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46271,"1A",200,"Em uso"],["ENG-00101",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",45907,"1A",200,"Em uso"],["ENG-00102",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46273,"1A",200,"Em uso"],["ENG-00103",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46274,"1A",200,"Em uso"],["ENG-00104",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46275,"1A",200,"Em uso"],["ENG-00105",445092013,"Torquímetro Digital 3/8 Angulo 10 A St96533 ",46276,"1A",200,"Em uso"],["ENG-00106",564528795,"Etilometro Modelo Bfd-100",46277,"1A",900,"Em uso"],["ENG-00107",864578795,"Balanças rodoviária",46278,"2A",2000,"Em uso"],["ENG-00108",702534641,"Manômetroe Nr13 ",46279,"1A",100,"Em uso"],["ENG-00109",702534641,"Manômetroe Nr13 ",46280,"1A",100,"Em uso"],["ENG-00110",702534641,"Manômetroe Nr13 ",46281,"1A",100,"Em uso"],["ENG-00111",702534641,"Manômetroe Nr13 ",46282,"1A",100,"Em uso"],["ENG-00112",702534641,"Manômetroe Nr13 ",46099,"1A",100,"Em uso"],["ENG-00113",702534642,"Manômetro Prensa 15 Ton P1670 Bovenau",46284,"1A",150,"Em uso"],["ENG-00114",702534642,"Manômetro Prensa 15 Ton P1670 Bovenau",46285,"1A",150,"Em uso"],["ENG-00115",702534642,"Manômetro Prensa 15 Ton P1670 Bovenau",46286,"1A",150,"Em uso"],["ENG-00116",702534642,"Manômetro Prensa 15 Ton P1670 Bovenau",46044,"1A",150,"Em uso"],["ENG-00117",702534642,"Manômetro Prensa 15 Ton P1670 Bovenau",46288,"1A",150,"Em uso"],["ENG-00118",702534642,"Manômetro Prensa 15 Ton P1670 Bovenau",46289,"1A",150,"Em uso"],["ENG-00119",702534642,"Manômetro Prensa 15 Ton P1670 Bovenau",46290,"1A",150,"Em uso"],["ENG-00120",522565417,"Termômetro Digital r Hikari Ht-550",46291,"1A",100,"Em uso"],["ENG-00121",522565417,"Termômetro Digital r Hikari Ht-550",46292,"1A",100,"Em uso"],["ENG-00122",522565417,"Termômetro Digital r Hikari Ht-550",46109,"1A",100,"Em uso"],["ENG-00123",564528795,"Etilometro Modelo Bfd-100",46294,"1A",900,"Em uso"],["ENG-00124",564528795,"Etilometro Modelo Bfd-100",45930,"1A",900,"Em calibração"],["ENG-00125",564528795,"Etilometro Modelo Bfd-100",45931,"1A",900,"em Reparo"],["ENG-00126",564528795,"Etilometro Modelo Bfd-100",45932,"1A",900,"Em calibração"],["ENG-00127",701542589,"Osciloscópio DSOX2004A/DSO0000-903",45933,"1A",800,"Em uso"],["ENG-00128",701542589,"Osciloscópio DSOX2004A/DSO0000-903",45934,"1A",800,"Em uso"],["ENG-00129",711542589,"Osciloscópio bk2565b",45935,"1A",900,"Em uso"],["ENG-00130",852416987,"Fonte De Bancada Dupla Afr Fa-3005p3,",45936,"1A",850,"Em uso"],["ENG-00131",852416987,"Fonte De Bancada Dupla Afr Fa-3005p3,",46060,"1A",850,"Em uso"],["ENG-00132",852416987,"Fonte De Bancada Dupla Afr Fa-3005p3,",45938,"1A",850,"Em uso"],["ENG-00133",852416987,"Fonte De Bancada Dupla Afr Fa-3005p3,",46121,"1A",850,"Em uso"]],"Equipamentos":[["ID_equipamento","Instrumento","Setor "],["ENG-00001","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00002","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00003","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00004","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00005","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00006","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00007","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00008","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00009","Alicate Amperímetro Fluke-302","Manutenção elétrica"],["ENG-00010","Alicate Amperímetro Fluke-302","Instrumentação"],["ENG-00011","Alicate Amperímetro Fluke-302","Instrumentação"],["ENG-00012","Alicate Amperímetro Fluke-302","Instrumentação"],["ENG-00013","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00014","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00015","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00016","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00017","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00018","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00019","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00020","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00021","Multímetro Digital 107 FLUKE","Instrumentação"],["ENG-00022","Multímetro Digital 107 FLUKE","Manutenção elétrica"],["ENG-00023","Multímetro Digital 107 FLUKE","Manutenção elétrica"],["ENG-00024","Multímetro Digital 107 FLUKE","Manutenção elétrica"],["ENG-00025","Multímetro Digital 107 FLUKE","Manutenção eletrônica"],["ENG-00026","Multímetro Digital 107 FLUKE","Manutenção eletrônica"],["ENG-00027","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00028","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00029","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00030","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00031","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00032","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00033","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00034","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00035","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00036","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00037","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00038","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00039","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00040","Alicate Amperímetro Et-3155 Minipa","Manutenção elétrica"],["ENG-00041","Alicate Amperímetro Et-3155 Minipa","Instrumentação"],["ENG-00042","Alicate Amperímetro Et-3155 Minipa","Instrumentação"],["ENG-00043","Alicate Amperímetro Et-3155 Minipa","Instrumentação"],["ENG-00044","Alicate Amperímetro Et-3155 Minipa","Manutenção eletrônica"],["ENG-00045","Alicate Amperímetro Et-3155 Minipa","Manutenção eletrônica"],["ENG-00046","Alicate Amperímetro Et-3155 Minipa","Manutenção mecânica"],["ENG-00047","Multímetro digital portátil - ET-2082E","Manutenção mecânica"],["ENG-00048","Multímetro digital portátil - ET-2082E","Manutenção eletrônica"],["ENG-00049","Multímetro digital portátil - ET-2082E","Manutenção eletrônica"],["ENG-00050","Multímetro digital portátil - ET-2082E","Manutenção eletrônica"],["ENG-00051","Multímetro digital portátil - ET-2082E","Manutenção eletrônica"],["ENG-00052","Multímetro digital portátil - ET-2082E","Manutenção eletrônica"],["ENG-00053","Multímetro digital portátil - ET-2082E","Manutenção eletrônica"],["ENG-00054","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00055","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00056","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00057","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00058","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00059","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00060","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00061","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00062","Multímetro digital portátil - ET-2082E","Manutenção elétrica"],["ENG-00063","Paquímetro Universal 150mm - 6\"","Manutenção elétrica"],["ENG-00064","Paquímetro Universal 150mm - 6\"","Manutenção mecânica"],["ENG-00065","Paquímetro Universal 150mm - 6\"","Manutenção mecânica"],["ENG-00066","Paquímetro Universal 150mm - 6\"","Manutenção mecânica"],["ENG-00067","Paquímetro Universal 150mm - 6\"","Manutenção mecânica"],["ENG-00068","Paquímetro Universal 150mm - 6\"","Manutenção mecânica"],["ENG-00069","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção mecânica"],["ENG-00070","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção mecânica"],["ENG-00071","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção mecânica"],["ENG-00072","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção mecânica"],["ENG-00073","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção mecânica"],["ENG-00074","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção mecânica"],["ENG-00075","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção mecânica"],["ENG-00076","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Manutenção elétrica"],["ENG-00077","Paquímetro Digital Mitutoyo Modelo 500-196-20B","Instrumentação"],["ENG-00078","Megometro Digital Mi 2702 Minipa 2500v","Manutenção elétrica"],["ENG-00079","Megômetro Digital Minipa MI-2710","Manutenção elétrica"],["ENG-00080","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00081","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00082","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00083","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00084","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00085","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00086","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00087","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00088","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00089","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00090","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00091","Torquimetro De Estalo 5-50nm Tramontina","Manutenção mecânica"],["ENG-00092","Torquimetro De Estalo 5-50nm Tramontina","Manutenção elétrica"],["ENG-00093","Torquimetro De Estalo 5-50nm Tramontina","Instrumentação"],["ENG-00094","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00095","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00096","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00097","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00098","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00099","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00100","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00101","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00102","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00103","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00104","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00105","Torquímetro Digital 3/8 Angulo 10 A St96533 ","Manutenção mecânica"],["ENG-00106","Etilometro Modelo Bfd-100","Segurança do trabalho"],["ENG-00107","Balanças rodoviária","Instrumentação"],["ENG-00108","Manômetroe Nr13 ","Instrumentação"],["ENG-00109","Manômetroe Nr13 ","Instrumentação"],["ENG-00110","Manômetroe Nr13 ","Instrumentação"],["ENG-00111","Manômetroe Nr13 ","Instrumentação"],["ENG-00112","Manômetroe Nr13 ","Instrumentação"],["ENG-00113","Manômetro Prensa 15 Ton P1670 Bovenau","Instrumentação"],["ENG-00114","Manômetro Prensa 15 Ton P1670 Bovenau","Instrumentação"],["ENG-00115","Manômetro Prensa 15 Ton P1670 Bovenau","Instrumentação"],["ENG-00116","Manômetro Prensa 15 Ton P1670 Bovenau","Instrumentação"],["ENG-00117","Manômetro Prensa 15 Ton P1670 Bovenau","Instrumentação"],["ENG-00118","Manômetro Prensa 15 Ton P1670 Bovenau","Instrumentação"],["ENG-00119","Manômetro Prensa 15 Ton P1670 Bovenau","Instrumentação"],["ENG-00120","Termômetro Digital r Hikari Ht-550","Instrumentação"],["ENG-00121","Termômetro Digital r Hikari Ht-550","Instrumentação"],["ENG-00122","Termômetro Digital r Hikari Ht-550","Instrumentação"],["ENG-00123","Etilometro Modelo Bfd-100","Segurança do trabalho"],["ENG-00124","Etilometro Modelo Bfd-100","Segurança do trabalho"],["ENG-00125","Etilometro Modelo Bfd-100","Segurança do trabalho"],["ENG-00126","Etilometro Modelo Bfd-100","Segurança do trabalho"],["ENG-00127","Osciloscópio DSOX2004A/DSO0000-903","Manutenção eletrônica"],["ENG-00128","Osciloscópio DSOX2004A/DSO0000-903","Instrumentação"],["ENG-00129","Osciloscópio bk2565b","Manutenção eletrônica"],["ENG-00130","Fonte De Bancada Dupla Afr Fa-3005p3,","Instrumentação"],["ENG-00131","Fonte De Bancada Dupla Afr Fa-3005p3,","Manutenção eletrônica"],["ENG-00132","Fonte De Bancada Dupla Afr Fa-3005p3,","Manutenção eletrônica"],["ENG-00133","Fonte De Bancada Dupla Afr Fa-3005p3,","Manutenção eletrônica"]]}}</script>
   <script>
 /* ============================================================
    Controle de calibração de equipamentos — lógica do dashboard
@@ -649,8 +631,8 @@ button.tile:hover { border-color: var(--ink-3); }
      6. Gráficos (Chart.js)
      7. Tabela (pesquisa, ordenação, paginação)
      8. Interface (eventos, mensagens, renderização)
-   Nenhum dado fica gravado neste arquivo: tudo vem da planilha
-   escolhida pelo usuário e vive apenas na memória do navegador.
+   Neste painel os dados da planilha vêm embutidos no HTML
+   (<script id="dadosPlanilha">), sem opção de upload.
    ============================================================ */
 'use strict';
 
@@ -928,16 +910,14 @@ function lerAba(workbook, definicao, erros) {
     return null;
   }
 
-  const ws = workbook.Sheets[nomeReal];
-  // raw:true mantém datas como número serial (sem conversão de fuso) e números como números.
-  const matriz = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
+  const matriz = workbook.Sheets[nomeReal].matriz;   // linhas da aba, 1ª linha = cabeçalho
   if (!matriz.length) {
     erros.push({ titulo: `A aba “${nomeReal}” está vazia`, detalhe: 'Inclua o cabeçalho e os dados.' });
     return null;
   }
 
   // Linha do Excel correspondente ao índice 0 da matriz (para mensagens de erro).
-  const primeiraLinha = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).s.r + 1 : 1;
+  const primeiraLinha = 1;
 
   const cabecalho = (matriz[0] || []).map(normalizarTexto);
   const indices = {};
@@ -1572,8 +1552,7 @@ function registrosDaTabela(filtrados, busca, ordem) {
    8. INTERFACE
    ============================================================ */
 const estado = {
-  arquivo: null,
-  handle: null,
+  origem: null,
   registros: [],
   filtrados: [],
   referencia: null,
@@ -1624,143 +1603,54 @@ function renderValidacao({ erros = [], avisos = [], resumo = '' }) {
   el.hidden = partes.length === 0;
 }
 
-function definirCarregando(carregando) {
-  $('btnSelecionar').disabled = carregando;
-  $('btnAtualizar').disabled = carregando;
-}
+function definirCarregando() { /* sem upload: nada a bloquear */ }
 
-/* ---------- Importação ---------- */
+/* ---------- Carga dos dados embutidos ---------- */
 
-/**
- * Abre o seletor de arquivo. No Chrome/Edge usa a File System Access API, que guarda um
- * "handle" do arquivo: assim o botão "Atualizar dados" sempre lê a versão salva mais recente
- * (a referência File comum é recusada pelo navegador depois que o arquivo muda no disco).
- * Nos demais navegadores usa o <input type="file"> tradicional.
- */
-async function selecionarPlanilha() {
-  if (typeof window.showOpenFilePicker === 'function') {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        multiple: false,
-        types: [{
-          description: 'Planilha Excel',
-          accept: {
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-            'application/vnd.ms-excel.sheet.macroEnabled.12': ['.xlsm'],
-            'application/vnd.ms-excel': ['.xls']
-          }
-        }]
-      });
-      const arquivo = await handle.getFile();
-      await processarArquivo(arquivo, 'selecionar', handle);
-      return;
-    } catch (erro) {
-      if (erro && erro.name === 'AbortError') return;   // usuário cancelou
-      // Qualquer outro erro (ex.: ambiente restrito): usa o seletor tradicional
-    }
-  }
-  $('fileInput').click();
-}
-
-/** Reprocessa a última planilha, relendo-a do disco; se não der, pede para selecionar de novo. */
-async function atualizarDados() {
-  if (!estado.arquivo) return selecionarPlanilha();
-  let arquivo = estado.arquivo;
-  if (estado.handle) {
-    try {
-      arquivo = await estado.handle.getFile();          // versão mais recente salva no disco
-    } catch (erro) {
-      estado.handle = null;
-      return selecionarPlanilha();
-    }
-  }
-  return processarArquivo(arquivo, 'atualizar', estado.handle);
-}
-
-async function processarArquivo(arquivo, origem, handle = null) {
-  if (typeof XLSX === 'undefined') {
-    renderValidacao({ erros: [{
-      titulo: 'A biblioteca SheetJS não foi carregada',
-      detalhe: 'Ela é baixada por CDN. Verifique a conexão com a internet e recarregue a página.'
-    }] });
-    return false;
-  }
-  if (!/\.(xlsx|xlsm|xls)$/i.test(arquivo.name)) {
-    renderValidacao({ erros: [{
-      titulo: 'Formato de arquivo não suportado',
-      detalhe: `“${arquivo.name}” não é uma planilha Excel. Selecione o Base_Cali.xlsx.`
-    }] });
-    return false;
-  }
-
-  definirCarregando(true);
-  let workbook;
+/** Lê a planilha embutida no HTML (<script id="dadosPlanilha">), valida e monta o painel. */
+function carregarDados() {
+  let dados;
   try {
-    const buffer = await arquivo.arrayBuffer();
-    workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+    dados = JSON.parse($('dadosPlanilha').textContent);
   } catch (erro) {
-    console.error(erro);
-    definirCarregando(false);
-    if (origem === 'atualizar') {
-      // O navegador recusou reler o arquivo (ele mudou no disco): abre a seleção automaticamente.
-      renderValidacao({ erros: [{
-        titulo: 'O navegador não permitiu reler a planilha',
-        detalhe: 'Isso acontece quando o arquivo é salvo de novo depois de selecionado. Escolha-o outra vez na janela que vai abrir.'
-      }] });
-      selecionarPlanilha();
-    } else {
-      renderValidacao({ erros: [{
-        titulo: 'Não foi possível ler o arquivo',
-        detalhe: 'Confirme se é um .xlsx válido, sem proteção por senha e que não esteja aberto de forma exclusiva por outro programa.'
-      }] });
-    }
-    return false;
+    renderValidacao({ erros: [{ titulo: 'Os dados embutidos no arquivo estão corrompidos', detalhe: String(erro.message || erro) }] });
+    return;
   }
 
-  let resultado;
-  try {
-    resultado = interpretarPlanilha(workbook);
-  } catch (erro) {
-    console.error(erro);
-    renderValidacao({ erros: [{ titulo: 'Erro inesperado ao processar a planilha', detalhe: String(erro.message || erro) }] });
-    definirCarregando(false);
-    return false;
-  }
+  // Mesmo formato que a leitura do Excel produzia: { SheetNames, Sheets: { aba: { matriz } } }
+  const workbook = {
+    SheetNames: Object.keys(dados.abas),
+    Sheets: Object.fromEntries(Object.entries(dados.abas).map(([nome, matriz]) => [nome, { matriz }]))
+  };
 
+  const resultado = interpretarPlanilha(workbook);
   if (resultado.erros.length) {
     renderValidacao({ erros: resultado.erros });
-    definirCarregando(false);
-    return false;
+    return;
   }
 
-  // Sucesso: substitui os dados anteriores por completo
-  estado.arquivo = arquivo;
-  estado.handle = handle;
+  estado.origem = dados;
   estado.registros = resultado.registros;
-  if (!estado.referenciaPersonalizada) estado.referencia = hojeSemHora();
+  estado.referencia = hojeSemHora();
   classificarRegistros(estado.registros, estado.referencia);
+  $('fReferencia').value = dataParaInput(estado.referencia);
 
-  $('estadoVazio').hidden = true;
   $('painel').hidden = false;
-  if (!estado.graficos) estado.graficos = criarGraficos();
+  estado.graficos = criarGraficos();
 
   preencherFiltrosDinamicos();
   atualizarCabecalhoArquivo();
   renderTudo();
-
-  const resumo = `${fmtInteiro.format(estado.registros.length)} equipamentos importados de ${arquivo.name}.`;
-  renderValidacao({ avisos: resultado.avisos, resumo });
-  definirCarregando(false);
-  return true;
+  renderValidacao({
+    avisos: resultado.avisos,
+    resumo: `${fmtInteiro.format(estado.registros.length)} equipamentos carregados de ${dados.arquivo}.`
+  });
 }
 
 function atualizarCabecalhoArquivo() {
-  const agora = new Date();
-  $('arquivoNome').textContent = estado.arquivo.name;
-  $('arquivoNome').title = estado.arquivo.name;
+  $('arquivoNome').textContent = estado.origem.arquivo;
   $('arquivoDetalhe').textContent =
-    `${fmtInteiro.format(estado.registros.length)} equipamentos, atualizado em ` +
-    `${formatarData(agora)} ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
+    `${fmtInteiro.format(estado.registros.length)} equipamentos, base de ${estado.origem.atualizadoEm}`;
 }
 
 /* ---------- Filtros ---------- */
@@ -1994,41 +1884,19 @@ function renderTabela() {
 
 /* ---------- Eventos ---------- */
 function configurarEventos() {
-  const input = $('fileInput');
-
-  $('btnSelecionar').addEventListener('click', selecionarPlanilha);
-  input.addEventListener('change', () => {
-    const arquivo = input.files && input.files[0];
-    input.value = '';                    // permite escolher o mesmo arquivo de novo
-    if (arquivo) processarArquivo(arquivo, 'selecionar');
-  });
-
-  // "Atualizar dados": reprocessa a última planilha; sem planilha, abre o seletor.
-  $('btnAtualizar').addEventListener('click', atualizarDados);
-
-  // Arrastar e soltar
-  let contadorArraste = 0;
-  window.addEventListener('dragenter', e => {
-    if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { contadorArraste++; document.body.classList.add('arrastando'); }
-  });
-  window.addEventListener('dragleave', () => {
-    contadorArraste = Math.max(0, contadorArraste - 1);
-    if (!contadorArraste) document.body.classList.remove('arrastando');
-  });
-  window.addEventListener('dragover', e => e.preventDefault());
-  window.addEventListener('drop', e => {
-    e.preventDefault();
-    contadorArraste = 0;
-    document.body.classList.remove('arrastando');
-    const arquivo = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    if (arquivo) processarArquivo(arquivo, 'selecionar');
-  });
-
   // Filtros em lista suspensa
   for (const [nome, id] of Object.entries(SELECTS)) {
     $(id).addEventListener('change', e => { estado.filtros[nome] = e.target.value; renderTudo(); });
   }
   $('btnLimpar').addEventListener('click', limparFiltros);
+
+  // Menu: rolagem por script (sem alterar a URL, o que é problemático em arquivos file://)
+  document.querySelectorAll('.navlink').forEach(botao => {
+    botao.addEventListener('click', () => {
+      const alvo = $(botao.dataset.alvo);
+      if (alvo && !alvo.hidden) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
 
   // Data de referência (para análises "como se hoje fosse...")
   $('fReferencia').addEventListener('change', e => {
@@ -2094,7 +1962,16 @@ function aplicarNovaReferencia() {
   renderTudo();
 }
 
+/** Qualquer erro não tratado aparece na tela, com o texto real, para facilitar o diagnóstico. */
+function mostrarErroInesperado(mensagem) {
+  if (!mensagem || /ResizeObserver/i.test(mensagem)) return;
+  renderValidacao({ erros: [{ titulo: 'Erro inesperado no dashboard', detalhe: String(mensagem) }] });
+  definirCarregando(false);
+}
+
 function init() {
+  window.addEventListener('error', e => mostrarErroInesperado(e.message));
+  window.addEventListener('unhandledrejection', e => mostrarErroInesperado(e.reason && e.reason.message ? e.reason.message : e.reason));
   estado.referencia = hojeSemHora();
   $('fReferencia').value = dataParaInput(estado.referencia);
   document.querySelectorAll('[data-dias]').forEach(el => { el.textContent = CONFIG.DIAS_PRESTES; });
@@ -2104,10 +1981,11 @@ function init() {
   montarCabecalhoTabela();
   atualizarSetasOrdenacao();
   configurarEventos();
+  carregarDados();
 }
 
 if (typeof document !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', init);
+  window.addEventListener('load', init);
 }
 
 // Exporta funções puras para testes automatizados em Node (não afeta o navegador).
