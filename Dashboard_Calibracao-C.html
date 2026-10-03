@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controle de Calibração de Equipamentos</title>
+
+  <!-- Fontes (opcional: se estiver offline, o navegador usa as fontes do sistema) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+/* ==========================================================
+   Controle de calibração — estilos
+   Direção visual: painel de instrumentação / engenharia.
+   As cores verde, amarelo e vermelho (etiqueta de calibração)
+   são reservadas ao STATUS CALCULADO. A SITUAÇÃO da planilha
+   usa tons azulados/neutros para nunca ser confundida com ele.
+   ========================================================== */
+
+:root {
+  --bg: #EBEEF0;
+  --panel: #FFFFFF;
+  --ink: #14212B;
+  --ink-2: #4B5C69;
+  --ink-3: #6F7E8A;
+  --line: #D3DADF;
+  --line-2: #E6EBEE;
+
+  --graphite: #15232E;
+  --graphite-2: #243847;
+  --accent: #1F5E8C;
+  --accent-2: #174A6F;
+  --accent-bg: #E6EFF6;
+
+  --ok: #2B7A4B;
+  --ok-ink: #1E5C37;
+  --ok-bg: #E3F1E8;
+  --ok-line: #A9D2B8;
+
+  --warn: #F2B705;
+  --warn-ink: #7A5600;
+  --warn-bg: #FFF1C2;
+  --warn-line: #EBCB63;
+
+  --bad: #C0302B;
+  --bad-ink: #962622;
+  --bad-bg: #FBE4E2;
+  --bad-line: #E8A9A5;
+
+  --radius: 6px;
+  --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-num: 'Barlow Condensed', 'Arial Narrow', 'Segoe UI', var(--font-ui);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 96px; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+h1, h2, h3, p { margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Cabeçalho ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  padding: 14px 28px;
+  background: var(--graphite);
+  color: #fff;
+}
+.topbar__brand { display: flex; align-items: center; gap: 12px; }
+.topbar__logo { color: #fff; flex: none; }
+.topbar__titulo { font-family: var(--font-num); font-weight: 600; font-size: 26px; line-height: 1; letter-spacing: .01em; }
+.topbar__sub { color: #A9BAC7; font-size: 12px; margin-top: 3px; }
+
+.topbar__nav { display: flex; gap: 4px; margin-left: 8px; }
+.topbar__nav a {
+  color: #CFDAE3; text-decoration: none; padding: 8px 12px; border-radius: 4px; font-weight: 500;
+}
+.topbar__nav a:hover { background: var(--graphite-2); color: #fff; }
+
+.topbar__acoes { display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+.arquivo { display: flex; flex-direction: column; min-width: 190px; max-width: 280px; margin-left: 6px; }
+.arquivo__nome { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.arquivo__detalhe { color: #A9BAC7; font-size: 12px; }
+
+/* ---------- Botões ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: 500;
+}
+.btn:hover { border-color: var(--ink-3); }
+.btn--primario { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn--primario:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.btn--claro { background: transparent; border-color: #5B7083; color: #fff; }
+.btn--claro:hover { background: var(--graphite-2); border-color: #8CA0B1; }
+.btn--pequeno { padding: 6px 10px; font-size: 13px; }
+.btn--contorno { background: transparent; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+/* ---------- Estrutura geral ---------- */
+.conteudo { max-width: 1520px; margin: 0 auto; padding: 20px 28px 8px; }
+.rodape { max-width: 1520px; margin: 0 auto; padding: 8px 28px 28px; color: var(--ink-3); font-size: 12px; }
+
+body.arrastando::after {
+  content: 'Solte a planilha para importar';
+  position: fixed; inset: 12px; display: grid; place-items: center;
+  border: 3px dashed var(--accent); border-radius: 10px;
+  background: rgba(230, 239, 246, .92); color: var(--accent-2);
+  font-family: var(--font-num); font-size: 34px; font-weight: 600; z-index: 50; pointer-events: none;
+}
+
+/* ---------- Mensagens de validação ---------- */
+.validacao { display: grid; gap: 10px; margin-bottom: 16px; }
+.alerta { border: 1px solid; border-radius: var(--radius); padding: 12px 16px; }
+.alerta ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 8px; }
+.alerta p { margin-top: 8px; }
+.alerta--erro { background: var(--bad-bg); border-color: var(--bad-line); color: var(--bad-ink); }
+.alerta--aviso { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+.alerta--ok { background: var(--ok-bg); border-color: var(--ok-line); color: var(--ok-ink); }
+.alerta summary { cursor: pointer; font-weight: 600; }
+.alerta__desc { display: block; font-weight: 400; }
+.alerta__ids { display: block; margin-top: 2px; font-size: 12px; opacity: .9; overflow-wrap: anywhere; }
+
+/* ---------- Estado vazio ---------- */
+.vazio {
+  background: var(--panel); border: 1px dashed #AEBBC5; border-radius: var(--radius);
+  padding: 44px 40px; max-width: 880px; margin: 24px auto;
+}
+.vazio h2 { font-family: var(--font-num); font-size: 34px; font-weight: 600; margin-bottom: 8px; }
+.vazio > p { color: var(--ink-2); max-width: 64ch; }
+.vazio__colunas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 24px; }
+.vazio__colunas > div { background: var(--bg); border-radius: 4px; padding: 14px 16px; }
+.vazio__colunas h3 { font-size: 14px; margin-bottom: 4px; }
+.vazio__colunas p { color: var(--ink-2); font-size: 13px; }
+
+/* ---------- Filtros ---------- */
+.filtros {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 16px; margin-bottom: 16px;
+}
+.filtros__grade { display: grid; grid-template-columns: repeat(6, minmax(130px, 1fr)); gap: 12px; flex: 1 1 760px; }
+.filtros__lado { display: flex; gap: 12px; align-items: flex-end; }
+
+.campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.campo > span:first-child { font-size: 12px; color: var(--ink-2); font-weight: 500; }
+.campo__linha { display: flex; gap: 6px; }
+select, input[type="date"], input[type="search"] {
+  height: 36px; border: 1px solid #BCC7CF; border-radius: 4px; background: #fff; padding: 0 10px; min-width: 0; width: 100%;
+}
+select:hover, input:hover { border-color: var(--ink-3); }
+.campo--data { min-width: 190px; }
+.campo--data input { width: auto; flex: 1; }
+
+/* ---------- Indicadores ---------- */
+.kpis { display: grid; grid-template-columns: 3fr 5fr 4fr; gap: 16px; margin-bottom: 16px; }
+.grupo {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px 16px; min-width: 0; display: flex; flex-direction: column;
+}
+.grupo__titulo { font-size: 15px; font-weight: 600; }
+.grupo__ajuda { color: var(--ink-3); font-size: 12px; margin: 2px 0 12px; min-height: 2.9em; }
+.grupo__tiles { display: grid; gap: 10px; }
+.grupo__tiles--2 { grid-template-columns: 1fr; }
+.grupo__tiles--3 { grid-template-columns: repeat(3, 1fr); }
+
+.tile {
+  display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  padding: 12px 14px 12px; text-align: left;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+}
+button.tile { cursor: pointer; }
+button.tile:hover { border-color: var(--ink-3); }
+.tile[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tile__rotulo { font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.tile__valor {
+  font-family: var(--font-num); font-weight: 600; font-size: 44px; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: .005em;
+}
+.tile__valor--moeda { font-size: 34px; white-space: nowrap; }
+.tile__nota { font-size: 12px; color: var(--ink-3); }
+
+/* Etiquetas de calibração: cor = status calculado */
+.tile--em_dia   { background: var(--ok-bg);   border-color: var(--ok-line); }
+.tile--prestes  { background: var(--warn-bg); border-color: var(--warn-line); }
+.tile--atraso   { background: var(--bad-bg);  border-color: var(--bad-line); }
+.tile--em_dia .tile__valor  { color: var(--ok-ink); }
+.tile--prestes .tile__valor { color: var(--warn-ink); }
+.tile--atraso .tile__valor  { color: var(--bad-ink); }
+.tile--em_dia .tile__rotulo, .tile--prestes .tile__rotulo, .tile--atraso .tile__rotulo { color: var(--ink); }
+.tile--em_dia .tile__nota, .tile--prestes .tile__nota, .tile--atraso .tile__nota { color: var(--ink-2); }
+
+/* Régua de calibração: elemento de destaque do painel */
+.regua-bloco { margin-top: auto; padding-top: 16px; }
+.regua__titulo { font-size: 12px; color: var(--ink-3); margin-bottom: 6px; }
+.regua {
+  display: flex; height: 32px; border-radius: 3px; overflow: hidden;
+  background: var(--line-2); border: 1px solid var(--line);
+}
+.regua__seg {
+  display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden;
+  font-weight: 600; font-size: 12px; color: #fff; white-space: nowrap;
+}
+.regua__seg--em_dia  { background: var(--ok); }
+.regua__seg--prestes { background: var(--warn); color: #3B2A00; }
+.regua__seg--atraso  { background: var(--bad); }
+.regua__vazia { width: 100%; display: grid; place-items: center; color: var(--ink-3); font-size: 12px; }
+.regua__escala {
+  display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); padding-top: 3px;
+  background: repeating-linear-gradient(to right, var(--ink-3) 0 1px, transparent 1px 10%) top / calc(100% - 1px) 5px no-repeat;
+}
+
+/* ---------- Gráficos ---------- */
+.graficos { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.graf--5 { grid-column: span 5; }
+.graf--6 { grid-column: span 6; }
+.graf--7 { grid-column: span 7; }
+.graf--12 { grid-column: span 12; }
+
+.painel-cartao {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px 16px; min-width: 0;
+}
+.painel-cartao__cab { margin-bottom: 12px; }
+.painel-cartao__cab h2 { font-size: 15px; font-weight: 600; }
+.painel-cartao__cab p { color: var(--ink-3); font-size: 12px; margin-top: 2px; }
+.painel-cartao__cab--acao { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+
+.graf__corpo { position: relative; height: 300px; }
+.graf__corpo--rosca { height: 280px; flex: 1 1 52%; min-width: 0; }
+.graf__vazio {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--ink-3); background: rgba(255, 255, 255, .9); text-align: center;
+}
+.graf__vazio[hidden] { display: none; }
+
+.rosca { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.legenda { list-style: none; margin: 0; padding: 0; flex: 1 1 40%; min-width: 190px; display: grid; gap: 2px; }
+.legenda li {
+  display: grid; grid-template-columns: 12px 1fr auto auto; align-items: center; gap: 8px;
+  padding: 6px 4px; border-bottom: 1px solid var(--line-2);
+}
+.legenda__cor { width: 12px; height: 12px; border-radius: 2px; }
+.legenda__qtd, .legenda__pct { font-variant-numeric: tabular-nums; text-align: right; }
+.legenda__qtd { font-weight: 600; }
+.legenda__pct { color: var(--ink-2); min-width: 54px; }
+
+/* Seletor segmentado do gráfico de custo */
+.segmentado { border: 1px solid var(--line); border-radius: 4px; padding: 0; margin: 0; display: inline-flex; overflow: hidden; }
+.segmentado legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.segmentado label { cursor: pointer; }
+.segmentado input { position: absolute; opacity: 0; pointer-events: none; }
+.segmentado span { display: block; padding: 7px 12px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.segmentado label + label span { border-left: 1px solid var(--line); }
+.segmentado input:checked + span { background: var(--accent); color: #fff; }
+.segmentado input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---------- Tabela ---------- */
+.tabela-secao { padding: 14px 16px 12px; }
+.tabela-ferramentas { display: flex; gap: 12px; align-items: flex-end; }
+.campo--busca { width: 280px; }
+.campo--tam { width: 130px; }
+
+.tabela-rolagem { overflow: auto; max-height: 640px; border: 1px solid var(--line); border-radius: 4px; }
+.tabela { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tabela th, .tabela td { padding: 8px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--line-2); }
+.tabela thead th { white-space: normal; vertical-align: bottom; }
+.tabela thead th {
+  position: sticky; top: 0; z-index: 1; background: #F3F6F8; border-bottom: 1px solid var(--line); padding: 0;
+}
+.tabela th button {
+  display: flex; align-items: center; gap: 6px; width: 100%; padding: 10px 10px;
+  background: none; border: 0; cursor: pointer; font-weight: 600; color: var(--ink-2); text-align: left;
+  line-height: 1.2; white-space: normal;
+}
+.tabela th button:hover { color: var(--ink); background: #E9EEF1; }
+.tabela th.num button, .tabela td.num { justify-content: flex-end; text-align: right; }
+.seta { width: 10px; color: var(--accent); font-size: 11px; }
+.tabela tbody tr:hover { background: #F6F9FB; }
+.tabela td.id { font-weight: 600; }
+.tabela td.instr { white-space: normal; min-width: 180px; max-width: 260px; }
+.tabela td.setor { white-space: normal; min-width: 110px; }
+.tabela__vazia { text-align: center; color: var(--ink-3); padding: 28px; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px;
+  border-radius: 3px; font-size: 12px; font-weight: 600; border: 1px solid;
+}
+.badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.badge--em_dia  { color: var(--ok-ink);   background: var(--ok-bg);   border-color: var(--ok-line); }
+.badge--prestes { color: var(--warn-ink); background: var(--warn-bg); border-color: var(--warn-line); }
+.badge--atraso  { color: var(--bad-ink);  background: var(--bad-bg);  border-color: var(--bad-line); }
+.badge--na, .badge--indefinido { color: var(--ink-2); background: var(--bg); border-color: var(--line); }
+
+.chip {
+  display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 500;
+  color: var(--accent-2); background: var(--accent-bg);
+}
+.chip--vazio { color: var(--ink-3); background: var(--bg); }
+
+.paginacao { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 12px; color: var(--ink-2); }
+.paginacao__botoes { display: flex; gap: 6px; align-items: center; }
+.paginacao__pagina { padding: 0 8px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Responsivo ---------- */
+@media (max-width: 1280px) {
+  .filtros__grade { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .grupo--status { grid-column: span 2; order: -1; }
+  .grupo__ajuda { min-height: 0; }
+}
+
+@media (max-width: 980px) {
+  .graf--5, .graf--6, .graf--7 { grid-column: span 12; }
+  .topbar__nav { display: none; }
+  .topbar__acoes { margin-left: 0; }
+  .conteudo { padding: 16px 16px 8px; }
+  .topbar { padding: 12px 16px; }
+}
+
+@media (max-width: 680px) {
+  .filtros { position: static; }
+  .filtros__grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis { grid-template-columns: 1fr; }
+  .grupo--status { grid-column: auto; }
+  .grupo__tiles--3 { grid-template-columns: 1fr; }
+  .tabela-ferramentas { width: 100%; }
+  .campo--busca { flex: 1; width: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+</style>
+</head>
+<body>
+
+  <!-- ===================== CABEÇALHO / MENU / UPLOAD ===================== -->
+  <header class="topbar">
+    <div class="topbar__brand">
+      <svg class="topbar__logo" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+        <path d="M4 23a12 12 0 0 1 24 0" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M16 23l6.5-8.5" stroke="#F2B705" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="16" cy="23" r="2.3" fill="currentColor"/>
+      </svg>
+      <div>
+        <h1 class="topbar__titulo">Controle de calibração</h1>
+        <p class="topbar__sub">Instrumentos e equipamentos de medição</p>
+      </div>
+    </div>
+
+    <nav class="topbar__nav" aria-label="Seções">
+      <a href="#indicadores">Indicadores</a>
+      <a href="#graficos">Gráficos</a>
+      <a href="#equipamentos">Equipamentos</a>
+      <a href="#validacao">Validação</a>
+    </nav>
+
+    <div class="topbar__acoes">
+      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls" hidden>
+      <button type="button" id="btnSelecionar" class="btn btn--primario">📁 Selecionar planilha</button>
+      <button type="button" id="btnAtualizar" class="btn btn--claro">🔄 Atualizar dados</button>
+      <div class="arquivo" aria-live="polite">
+        <span class="arquivo__nome" id="arquivoNome">Nenhuma planilha carregada</span>
+        <span class="arquivo__detalhe" id="arquivoDetalhe">Selecione o arquivo Base_Cali.xlsx</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="conteudo">
+
+    <!-- Mensagens de validação / erros de importação -->
+    <section id="validacao" class="validacao" aria-label="Validação da planilha" hidden></section>
+
+    <!-- Estado inicial: nada carregado (nenhum dado fictício é exibido) -->
+    <section id="estadoVazio" class="vazio">
+      <h2>Carregue a planilha para começar</h2>
+      <p>Use <strong>📁 Selecionar planilha</strong> (ou arraste o arquivo para esta página) e escolha o <strong>Base_Cali.xlsx</strong>. Todo o processamento acontece no seu navegador; nada é enviado para servidores.</p>
+      <div class="vazio__colunas">
+        <div>
+          <h3>Aba “Base”</h3>
+          <p>ID_equipamento, Material, Instrumento, Data última Calibração, Plano, Custo, Situação</p>
+        </div>
+        <div>
+          <h3>Aba “Equipamentos”</h3>
+          <p>ID_equipamento, Instrumento, Setor</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PAINEL (aparece após importar) ===================== -->
+    <div id="painel" hidden>
+
+      <!-- FILTROS -->
+      <section class="filtros" aria-label="Filtros">
+        <div class="filtros__grade">
+          <label class="campo">
+            <span>Período (próxima calibração)</span>
+            <select id="fPeriodo"></select>
+          </label>
+          <label class="campo">
+            <span>Ano (próxima calibração)</span>
+            <select id="fAno"></select>
+          </label>
+          <label class="campo">
+            <span>Mês (próxima calibração)</span>
+            <select id="fMes"></select>
+          </label>
+          <label class="campo">
+            <span>Equipe / setor</span>
+            <select id="fSetor"></select>
+          </label>
+          <label class="campo">
+            <span>Situação (planilha)</span>
+            <select id="fSituacao"></select>
+          </label>
+          <label class="campo">
+            <span>Status da calibração</span>
+            <select id="fStatus"></select>
+          </label>
+        </div>
+        <div class="filtros__lado">
+          <label class="campo campo--data">
+            <span>Data de referência</span>
+            <span class="campo__linha">
+              <input type="date" id="fReferencia">
+              <button type="button" id="btnHoje" class="btn btn--pequeno" title="Usar a data de hoje">Hoje</button>
+            </span>
+          </label>
+          <button type="button" id="btnLimpar" class="btn btn--pequeno btn--contorno">Limpar filtros</button>
+        </div>
+      </section>
+
+      <!-- INDICADORES -->
+      <section id="indicadores" class="kpis" aria-label="Indicadores">
+
+        <div class="grupo grupo--geral">
+          <h2 class="grupo__titulo">Visão geral</h2>
+          <p class="grupo__ajuda">Conforme os filtros</p>
+          <div class="grupo__tiles grupo__tiles--2">
+            <div class="tile">
+              <span class="tile__rotulo">Total de equipamentos</span>
+              <span class="tile__valor" id="kpiTotal">—</span>
+              <span class="tile__nota">no filtro atual</span>
+            </div>
+            <div class="tile">
+              <span class="tile__rotulo">Custo total</span>
+              <span class="tile__valor tile__valor--moeda" id="kpiCusto">—</span>
+              <span class="tile__nota" id="kpiCustoNota">soma da coluna Custo</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grupo grupo--status">
+          <h2 class="grupo__titulo">Status calculado da calibração</h2>
+          <p class="grupo__ajuda">Calculado pela próxima calibração em relação à data de referência. Sucata fica fora do cálculo.</p>
+          <div class="grupo__tiles grupo__tiles--3">
+            <button type="button" class="tile tile--em_dia" data-filtro="status" data-valor="em_dia" aria-pressed="false">
+              <span class="tile__rotulo">Calibração em dia</span>
+              <span class="tile__valor" id="kpiEmDia">—</span>
+              <span class="tile__nota"><span id="pctEmDia">—</span> do total, vencem em mais de <span data-dias></span> dias</span>
+            </button>
+            <button type="button" class="tile tile--prestes" data-filtro="status" data-valor="prestes" aria-pressed="false">
+              <span class="tile__rotulo">Prestes a calibrar</span>
+              <span class="tile__valor" id="kpiPrestes">—</span>
+              <span class="tile__nota"><span id="pctPrestes">—</span> do total, até <span data-dias></span> dias (inclui hoje)</span>
+            </button>
+            <button type="button" class="tile tile--atraso" data-filtro="status" data-valor="atraso" aria-pressed="false">
+              <span class="tile__rotulo">Calibração em atraso</span>
+              <span class="tile__valor" id="kpiAtraso">—</span>
+              <span class="tile__nota"><span id="pctAtraso">—</span> do total, data já passou</span>
+            </button>
+          </div>
+          <div class="regua-bloco">
+            <p class="regua__titulo">Proporção entre os equipamentos classificados (sem sucata)</p>
+            <div class="regua" id="regua" role="img" aria-label="Proporção entre em dia, prestes a calibrar e em atraso"></div>
+            <div class="regua__escala" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+          </div>
+        </div>
+
+        <div class="grupo grupo--situacao">
+          <h2 class="grupo__titulo">Situação informada na planilha</h2>
+          <p class="grupo__ajuda">Valor original da coluna Situação, sem alteração.</p>
+          <div class="grupo__tiles grupo__tiles--3">
+            <button type="button" class="tile" data-filtro="situacao" data-valor="em calibracao" aria-pressed="false">
+              <span class="tile__rotulo">Em calibração</span>
+              <span class="tile__valor" id="kpiEmCalibracao">—</span>
+              <span class="tile__nota" id="pctEmCalibracao">—</span>
+            </button>
+            <button type="button" class="tile" data-filtro="situacao" data-valor="em uso" aria-pressed="false">
+              <span class="tile__rotulo">Em uso</span>
+              <span class="tile__valor" id="kpiEmUso">—</span>
+              <span class="tile__nota" id="pctEmUso">—</span>
+            </button>
+            <button type="button" class="tile" data-filtro="situacao" data-valor="sucata" aria-pressed="false">
+              <span class="tile__rotulo">Sucata</span>
+              <span class="tile__valor" id="kpiSucata">—</span>
+              <span class="tile__nota" id="pctSucata">—</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- GRÁFICOS -->
+      <section id="graficos" class="graficos" aria-label="Gráficos">
+
+        <article class="painel-cartao graf graf--7">
+          <header class="painel-cartao__cab">
+            <h2>Equipamentos por mês</h2>
+            <p>Mês da próxima calibração. Sucata não entra.</p>
+          </header>
+          <div class="graf__corpo" id="corpo-cMeses">
+            <canvas id="cMeses" aria-label="Gráfico de equipamentos a calibrar e em atraso por mês"></canvas>
+            <p class="graf__vazio" hidden>Sem dados para os filtros selecionados.</p>
+          </div>
+        </article>
+
+        <article class="painel-cartao graf graf--5">
+          <header class="painel-cartao__cab">
+            <h2>Distribuição por situação</h2>
+            <p>Coluna Situação da planilha.</p>
+          </header>
+          <div class="rosca">
+            <div class="graf__corpo graf__corpo--rosca" id="corpo-cSituacao">
+              <canvas id="cSituacao" aria-label="Gráfico de rosca com a distribuição por situação"></canvas>
+              <p class="graf__vazio" hidden>Sem dados para os filtros selecionados.</p>
+            </div>
+            <ul class="legenda" id="legendaSituacao"></ul>
+          </div>
+        </article>
+
+        <article class="painel-cartao graf graf--12">
+          <header class="painel-cartao__cab painel-cartao__cab--acao">
+            <div>
+              <h2>Custo mensal</h2>
+              <p id="custoMesAjuda">Custo previsto da calibração que vence em cada mês.</p>
+            </div>
+            <fieldset class="segmentado">
+              <legend>Mês com base na</legend>
+              <label><input type="radio" name="baseCusto" value="proxima" checked><span>Próxima calibração</span></label>
+              <label><input type="radio" name="baseCusto" value="ultima"><span>Última calibração</span></label>
+            </fieldset>
+          </header>
+          <div class="graf__corpo" id="corpo-cCustoMes">
+            <canvas id="cCustoMes" aria-label="Gráfico de custo por mês"></canvas>
+            <p class="graf__vazio" hidden>Sem dados para os filtros selecionados.</p>
+          </div>
+        </article>
+
+        <article class="painel-cartao graf graf--6">
+          <header class="painel-cartao__cab">
+            <h2>Custo por setor</h2>
+            <p>Soma da coluna Custo, setor vindo da aba Equipamentos.</p>
+          </header>
+          <div class="graf__corpo" id="corpo-cCustoSetor">
+            <canvas id="cCustoSetor" aria-label="Gráfico de custo total por setor"></canvas>
+            <p class="graf__vazio" hidden>Sem dados para os filtros selecionados.</p>
+          </div>
+        </article>
+
+        <article class="painel-cartao graf graf--6">
+          <header class="painel-cartao__cab">
+            <h2>Equipamentos por setor</h2>
+            <p>Quantidade de equipamentos em cada setor.</p>
+          </header>
+          <div class="graf__corpo" id="corpo-cQtdSetor">
+            <canvas id="cQtdSetor" aria-label="Gráfico de quantidade de equipamentos por setor"></canvas>
+            <p class="graf__vazio" hidden>Sem dados para os filtros selecionados.</p>
+          </div>
+        </article>
+      </section>
+
+      <!-- TABELA DETALHADA -->
+      <section id="equipamentos" class="painel-cartao tabela-secao" aria-label="Tabela de equipamentos">
+        <header class="painel-cartao__cab painel-cartao__cab--acao">
+          <div>
+            <h2>Equipamentos</h2>
+            <p id="tabelaResumo">Respeita os filtros acima. A pesquisa vale só para esta tabela.</p>
+          </div>
+          <div class="tabela-ferramentas">
+            <label class="campo campo--busca">
+              <span>Pesquisar</span>
+              <input type="search" id="busca" placeholder="ID, instrumento, setor, status…" autocomplete="off">
+            </label>
+            <label class="campo campo--tam">
+              <span>Linhas por página</span>
+              <select id="tamPagina">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+          </div>
+        </header>
+
+        <div class="tabela-rolagem">
+          <table class="tabela" id="tabela">
+            <thead><tr id="cabecalhoTabela"></tr></thead>
+            <tbody id="corpoTabela"></tbody>
+          </table>
+        </div>
+
+        <footer class="paginacao">
+          <span id="infoTabela" aria-live="polite"></span>
+          <div class="paginacao__botoes" id="paginacao"></div>
+        </footer>
+      </section>
+    </div>
+  </main>
+
+  <footer class="rodape">
+    Os dados ficam apenas na memória do navegador e são descartados ao fechar a página.
+  </footer>
+
+  <!-- Bibliotecas via CDN (versões fixas; se o cdnjs falhar, tenta o jsDelivr) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"
+          onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';document.head.appendChild(s)"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+          onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';document.head.appendChild(s)"></script>
+  <script>
+/* ============================================================
+   Controle de calibração de equipamentos — lógica do dashboard
+   ------------------------------------------------------------
+   Organização do arquivo:
+     1. Configuração (regras de negócio ajustáveis)
+     2. Utilitários de texto, número e data
+     3. Leitura e validação da planilha (SheetJS)
+     4. Relacionamento Base × Equipamentos e cálculos
+     5. Filtros e agregações (KPIs, meses, setores, situação)
+     6. Gráficos (Chart.js)
+     7. Tabela (pesquisa, ordenação, paginação)
+     8. Interface (eventos, mensagens, renderização)
+   Nenhum dado fica gravado neste arquivo: tudo vem da planilha
+   escolhida pelo usuário e vive apenas na memória do navegador.
+   ============================================================ */
+'use strict';
+
+/* ============================================================
+   1. CONFIGURAÇÃO
+   ============================================================ */
+const CONFIG = {
+  // Janela do status "Prestes a calibrar": de hoje até hoje + N dias (inclusive).
+  DIAS_PRESTES: 30,
+
+  // Situações (já normalizadas: minúsculas, sem acento) que NÃO entram na
+  // classificação de calibração. Equipamento sucateado não será mais calibrado.
+  SITUACOES_FORA_DO_ESCOPO: ['sucata'],
+
+  // Se true, o custo desses equipamentos não entra no KPI nem nos gráficos de custo
+  // (a tabela continua mostrando o valor original). Use false para somar tudo.
+  EXCLUIR_FORA_DO_ESCOPO_DOS_CUSTOS: true,
+
+  // Setor exibido quando o ID da aba Base não existe na aba Equipamentos.
+  SETOR_SEM_CORRESPONDENCIA: 'Sem setor',
+
+  MOEDA: 'BRL'
+};
+
+// Nomes esperados de abas e colunas. A comparação ignora maiúsculas, acentos
+// e espaços sobrando (ex.: o cabeçalho "Setor " com espaço no fim é aceito).
+const DEFINICAO_ABAS = {
+  base: {
+    nome: 'Base',
+    colunas: {
+      id: 'ID_equipamento',
+      material: 'Material',
+      instrumento: 'Instrumento',
+      ultima: 'Data última Calibração',
+      plano: 'Plano',
+      custo: 'Custo',
+      situacao: 'Situação'
+    }
+  },
+  equipamentos: {
+    nome: 'Equipamentos',
+    colunas: {
+      id: 'ID_equipamento',
+      instrumento: 'Instrumento',
+      setor: 'Setor'
+    }
+  }
+};
+
+// Status CALCULADO da calibração (nunca altera a coluna "Situação" original).
+const STATUS = {
+  ATRASO:     { chave: 'atraso',     rotulo: 'Em atraso',          ordem: 0 },
+  PRESTES:    { chave: 'prestes',    rotulo: 'Prestes a calibrar', ordem: 1 },
+  EM_DIA:     { chave: 'em_dia',     rotulo: 'Em dia',             ordem: 2 },
+  NA:         { chave: 'na',         rotulo: 'Não aplicável',      ordem: 3 },
+  INDEFINIDO: { chave: 'indefinido', rotulo: 'Indefinido',         ordem: 4 }
+};
+const LISTA_STATUS = [STATUS.EM_DIA, STATUS.PRESTES, STATUS.ATRASO, STATUS.NA, STATUS.INDEFINIDO];
+const STATUS_CLASSIFICADOS = [STATUS.EM_DIA, STATUS.PRESTES, STATUS.ATRASO];
+
+const PERIODOS = [
+  { valor: 'todos',     rotulo: 'Todos' },
+  { valor: 'atrasados', rotulo: 'Já vencidos (em atraso)' },
+  { valor: '30',        rotulo: 'Vencem em até 30 dias' },
+  { valor: '60',        rotulo: 'Vencem em até 60 dias' },
+  { valor: '90',        rotulo: 'Vencem em até 90 dias' },
+  { valor: '365',       rotulo: 'Vencem em até 12 meses' }
+];
+
+const NOMES_MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const ABREV_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+/* ============================================================
+   2. UTILITÁRIOS
+   ============================================================ */
+const fmtInteiro = new Intl.NumberFormat('pt-BR');
+const fmtPercentual = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const fmtMoeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: CONFIG.MOEDA });
+const fmtMoedaInteira = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: CONFIG.MOEDA, maximumFractionDigits: 0 });
+
+const MS_DIA = 86400000;
+const pad2 = n => String(n).padStart(2, '0');
+
+/** Texto comparável: sem acento, minúsculo, espaços colapsados. null vira "". */
+function normalizarTexto(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function textoLimpo(valor) {
+  return valor === null || valor === undefined ? '' : String(valor).trim();
+}
+
+function escapeHtml(valor) {
+  return String(valor).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function porcentagem(parte, total) {
+  return total > 0 ? fmtPercentual.format((parte / total) * 100) + '%' : '—';
+}
+
+/* ---------- Datas ----------
+   Regra geral: toda data interna é um objeto Date à MEIA-NOITE LOCAL, criado
+   a partir de ano/mês/dia (nunca de strings ISO ou timestamps). Assim não existe
+   deslocamento de fuso horário, e o dia/mês não é invertido. */
+
+/** Cria a data validando o calendário (rejeita 31/02, mês 13, ano absurdo...). */
+function criarData(ano, mes, dia) {
+  if (![ano, mes, dia].every(Number.isInteger)) return null;
+  if (ano < 1900 || ano > 2200 || mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+  const data = new Date(ano, mes - 1, dia);
+  if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) return null;
+  return data;
+}
+
+function hojeSemHora() {
+  const agora = new Date();
+  return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+}
+
+/** Diferença em dias inteiros (ate - de). Usa UTC só para contar, evitando erro no horário de verão. */
+function diferencaEmDias(de, ate) {
+  const a = Date.UTC(de.getFullYear(), de.getMonth(), de.getDate());
+  const b = Date.UTC(ate.getFullYear(), ate.getMonth(), ate.getDate());
+  return Math.round((b - a) / MS_DIA);
+}
+
+/** DD/MM/AAAA (formato brasileiro). */
+function formatarData(data) {
+  return data ? `${pad2(data.getDate())}/${pad2(data.getMonth() + 1)}/${data.getFullYear()}` : '—';
+}
+
+/** Valor para <input type="date"> (AAAA-MM-DD). */
+function dataParaInput(data) {
+  return `${data.getFullYear()}-${pad2(data.getMonth() + 1)}-${pad2(data.getDate())}`;
+}
+
+function inputParaData(texto) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(texto || '');
+  return m ? criarData(Number(m[1]), Number(m[2]), Number(m[3])) : null;
+}
+
+const chaveMes = data => `${data.getFullYear()}-${pad2(data.getMonth() + 1)}`;
+function rotuloMes(chave) {
+  const [ano, mes] = chave.split('-').map(Number);
+  return `${ABREV_MESES[mes - 1]}/${ano}`;
+}
+
+/**
+ * Converte o valor de uma célula de data em Date normalizado.
+ * Aceita: número serial do Excel, texto DD/MM/AAAA (dia primeiro, padrão BR),
+ * texto AAAA-MM-DD e objetos Date.
+ * Retorna { data: Date|null, motivo: 'vazia'|'invalida'|null }.
+ */
+function lerDataDaCelula(valor) {
+  if (valor === null || valor === undefined || String(valor).trim() === '') {
+    return { data: null, motivo: 'vazia' };
+  }
+
+  // Objeto Date (caso a planilha seja lida com cellDates): usa os componentes locais.
+  if (valor instanceof Date) {
+    if (isNaN(valor)) return { data: null, motivo: 'invalida' };
+    const d = criarData(valor.getFullYear(), valor.getMonth() + 1, valor.getDate());
+    return { data: d, motivo: d ? null : 'invalida' };
+  }
+
+  // Número serial do Excel: dias desde 30/12/1899 (o Excel trata 1900 como bissexto,
+  // por isso seriais abaixo de 60 usam 31/12/1899 como origem).
+  const serial = typeof valor === 'number' ? valor
+    : /^\d{5}(\.\d+)?$/.test(String(valor).trim()) ? Number(valor) : null;
+  if (serial !== null) {
+    if (!isFinite(serial) || serial < 1) return { data: null, motivo: 'invalida' };
+    const origem = serial < 60 ? Date.UTC(1899, 11, 31) : Date.UTC(1899, 11, 30);
+    const utc = new Date(origem + Math.floor(serial) * MS_DIA);
+    const d = criarData(utc.getUTCFullYear(), utc.getUTCMonth() + 1, utc.getUTCDate());
+    return { data: d, motivo: d ? null : 'invalida' };
+  }
+
+  const texto = String(valor).trim();
+
+  // DD/MM/AAAA, DD-MM-AAAA ou DD.MM.AAAA — sempre dia primeiro.
+  let m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/.exec(texto);
+  if (m) {
+    const d = criarData(Number(m[3]), Number(m[2]), Number(m[1]));
+    return { data: d, motivo: d ? null : 'invalida' };
+  }
+
+  // AAAA-MM-DD (ISO), com ou sem hora depois.
+  m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/.exec(texto);
+  if (m) {
+    const d = criarData(Number(m[1]), Number(m[2]), Number(m[3]));
+    return { data: d, motivo: d ? null : 'invalida' };
+  }
+
+  return { data: null, motivo: 'invalida' };
+}
+
+/**
+ * Interpreta o Plano: "1A" = 1 ano, "2A" = 2 anos... (também aceita "6M" = 6 meses).
+ * Retorna { meses, texto } ou null se o valor for inválido.
+ */
+function lerPlano(valor) {
+  const texto = textoLimpo(valor).toUpperCase().replace(/\s+/g, '');
+  const m = /^(\d{1,3})([AM])$/.exec(texto);
+  if (!m) return null;
+  const quantidade = Number(m[1]);
+  if (quantidade < 1) return null;
+  return { meses: m[2] === 'A' ? quantidade * 12 : quantidade, texto };
+}
+
+/**
+ * Soma meses a uma data. Se o dia não existir no mês de destino
+ * (ex.: 29/02/2024 + 1 ano), usa o último dia do mês (28/02/2025).
+ */
+function somarMeses(data, meses) {
+  const total = data.getFullYear() * 12 + data.getMonth() + meses;
+  const ano = Math.floor(total / 12);
+  const mes = total % 12;
+  const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+  return new Date(ano, mes, Math.min(data.getDate(), ultimoDia));
+}
+
+/**
+ * Interpreta custos: número, "300", "300,50", "1.200,50" ou "R$ 1.200,50".
+ * Retorna { valor: number|null, motivo: 'vazio'|'invalido'|null }.
+ */
+function lerCusto(valor) {
+  if (valor === null || valor === undefined || String(valor).trim() === '') {
+    return { valor: null, motivo: 'vazio' };
+  }
+  if (typeof valor === 'number') {
+    return isFinite(valor) && valor >= 0 ? { valor, motivo: null } : { valor: null, motivo: 'invalido' };
+  }
+  let t = String(valor).replace(/R\$|\s/gi, '');
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');       // 1.200,50 -> 1200.50
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');       // 1.200 -> 1200
+  if (!/^\d+(\.\d+)?$/.test(t)) return { valor: null, motivo: 'invalido' };
+  return { valor: Number(t), motivo: null };
+}
+
+/* ============================================================
+   3. LEITURA E VALIDAÇÃO DA PLANILHA
+   ============================================================ */
+
+/** Agrupa avisos por tipo, guardando os IDs/linhas afetados. */
+function criarColetorDeAvisos() {
+  const tipos = new Map();
+  return {
+    add(chave, titulo, descricao, referencia) {
+      if (!tipos.has(chave)) tipos.set(chave, { titulo, descricao, itens: [] });
+      tipos.get(chave).itens.push(referencia);
+    },
+    lista() {
+      return [...tipos.values()].map(t => ({ ...t, total: t.itens.length }));
+    }
+  };
+}
+
+/**
+ * Lê uma aba como matriz e mapeia as colunas pelo NOME do cabeçalho
+ * (não pela posição). Registra erro se a aba ou colunas obrigatórias faltarem.
+ * Retorna lista de objetos { _linha, <chaveInterna>: valorBruto } ou null.
+ */
+function lerAba(workbook, definicao, erros) {
+  const nomeReal = workbook.SheetNames.find(
+    n => normalizarTexto(n) === normalizarTexto(definicao.nome));
+  if (!nomeReal) {
+    erros.push({
+      titulo: `A aba “${definicao.nome}” não foi encontrada`,
+      detalhe: `Abas existentes no arquivo: ${workbook.SheetNames.join(', ') || 'nenhuma'}.`
+    });
+    return null;
+  }
+
+  const ws = workbook.Sheets[nomeReal];
+  // raw:true mantém datas como número serial (sem conversão de fuso) e números como números.
+  const matriz = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: true });
+  if (!matriz.length) {
+    erros.push({ titulo: `A aba “${nomeReal}” está vazia`, detalhe: 'Inclua o cabeçalho e os dados.' });
+    return null;
+  }
+
+  // Linha do Excel correspondente ao índice 0 da matriz (para mensagens de erro).
+  const primeiraLinha = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).s.r + 1 : 1;
+
+  const cabecalho = (matriz[0] || []).map(normalizarTexto);
+  const indices = {};
+  const faltantes = [];
+  for (const [chave, nome] of Object.entries(definicao.colunas)) {
+    const i = cabecalho.indexOf(normalizarTexto(nome));
+    if (i < 0) faltantes.push(nome); else indices[chave] = i;
+  }
+  if (faltantes.length) {
+    erros.push({
+      titulo: `Colunas obrigatórias ausentes na aba “${nomeReal}”`,
+      detalhe: `Faltam: ${faltantes.join(', ')}. Colunas encontradas: ` +
+               `${(matriz[0] || []).filter(c => c !== null).map(textoLimpo).join(', ') || 'nenhuma'}.`
+    });
+    return null;
+  }
+
+  const linhas = [];
+  for (let i = 1; i < matriz.length; i++) {
+    const celulas = matriz[i] || [];
+    const vazia = celulas.every(c => c === null || c === undefined || String(c).trim() === '');
+    if (vazia) continue; // linhas em branco são ignoradas
+    const obj = { _linha: primeiraLinha + i };
+    for (const chave of Object.keys(indices)) obj[chave] = celulas[indices[chave]];
+    linhas.push(obj);
+  }
+  return linhas;
+}
+
+/** Chave de junção entre as abas: ID sem espaços e em maiúsculas. */
+const chaveDoId = id => textoLimpo(id).toUpperCase();
+
+/**
+ * Ponto de entrada da importação: valida as abas, relaciona e calcula.
+ * Retorna { registros, avisos, erros }. Se houver erros, registros fica vazio.
+ */
+function interpretarPlanilha(workbook) {
+  const erros = [];
+  const linhasBase = lerAba(workbook, DEFINICAO_ABAS.base, erros);
+  const linhasEquip = lerAba(workbook, DEFINICAO_ABAS.equipamentos, erros);
+  if (erros.length) return { registros: [], avisos: [], erros };
+
+  const avisos = criarColetorDeAvisos();
+  const registros = montarRegistros(linhasBase, linhasEquip, avisos);
+
+  if (!registros.length) {
+    erros.push({
+      titulo: 'A aba “Base” não tem equipamentos',
+      detalhe: 'Nenhuma linha com ID_equipamento foi encontrada abaixo do cabeçalho.'
+    });
+  }
+  return { registros: erros.length ? [] : registros, avisos: avisos.lista(), erros };
+}
+
+/* ============================================================
+   4. RELACIONAMENTO E CÁLCULOS
+   ============================================================ */
+
+/**
+ * Relaciona as abas pelo ID_equipamento e calcula a próxima calibração.
+ *
+ * - A aba Base é a fonte da verdade da lista de equipamentos (cada linha vira 1 registro).
+ * - A aba Equipamentos só contribui com o Setor (junção por ID, como um PROCV/LEFT JOIN).
+ * - IDs só existentes em Equipamentos são IGNORADOS (nunca se cria equipamento artificial).
+ * - Problemas de dados não derrubam a importação: viram avisos e o registro
+ *   fica com status "Indefinido" quando não há como calcular.
+ */
+function montarRegistros(linhasBase, linhasEquip, avisos) {
+  // 1) Índice da aba Equipamentos: ID -> { setor, instrumento }
+  const indiceEquip = new Map();
+  for (const l of linhasEquip) {
+    const chave = chaveDoId(l.id);
+    if (!chave) {
+      avisos.add('eq_sem_id', 'Linhas da aba Equipamentos sem ID_equipamento',
+        'Essas linhas foram ignoradas.', `linha ${l._linha}`);
+      continue;
+    }
+    if (indiceEquip.has(chave)) {
+      avisos.add('eq_duplicado', 'IDs repetidos na aba Equipamentos',
+        'Foi usada a primeira ocorrência de cada ID.', textoLimpo(l.id));
+      continue;
+    }
+    const setor = textoLimpo(l.setor);
+    if (!setor) {
+      avisos.add('setor_vazio', 'Equipamentos com Setor vazio na aba Equipamentos',
+        `Aparecem como “${CONFIG.SETOR_SEM_CORRESPONDENCIA}”.`, textoLimpo(l.id));
+    }
+    indiceEquip.set(chave, { setor: setor || CONFIG.SETOR_SEM_CORRESPONDENCIA, instrumento: textoLimpo(l.instrumento) });
+  }
+
+  // 2) Percorre a aba Base e monta um registro completo por equipamento
+  const registros = [];
+  const idsUsados = new Set();
+  const idsRepetidosNaBase = new Set();
+
+  for (const l of linhasBase) {
+    const chave = chaveDoId(l.id);
+    if (!chave) {
+      avisos.add('base_sem_id', 'Linhas da aba Base sem ID_equipamento',
+        'Essas linhas foram ignoradas porque não é possível relacioná-las com a aba Equipamentos.', `linha ${l._linha}`);
+      continue;
+    }
+    const id = textoLimpo(l.id);
+    if (idsUsados.has(chave) && !idsRepetidosNaBase.has(chave)) {
+      idsRepetidosNaBase.add(chave);
+      avisos.add('base_duplicado', 'IDs repetidos na aba Base',
+        'Todas as linhas foram mantidas; confira se não estão sendo contadas em duplicidade.', id);
+    }
+    idsUsados.add(chave);
+
+    // Relacionamento Base -> Equipamentos
+    const equip = indiceEquip.get(chave);
+    if (!equip) {
+      avisos.add('sem_correspondencia', 'IDs da aba Base sem correspondência na aba Equipamentos',
+        `Foram mantidos e aparecem no setor “${CONFIG.SETOR_SEM_CORRESPONDENCIA}”.`, id);
+    }
+
+    // Data da última calibração
+    const dataLida = lerDataDaCelula(l.ultima);
+    if (dataLida.motivo) {
+      avisos.add('data_invalida', 'Data última Calibração vazia ou inválida',
+        'Sem a data não dá para calcular a próxima calibração; o status fica “Indefinido”.', id);
+    }
+
+    // Plano -> intervalo em meses
+    const plano = lerPlano(l.plano);
+    if (!plano) {
+      avisos.add('plano_invalido', 'Plano vazio ou inválido (esperado 1A, 2A, 3A…)',
+        'Sem o plano não dá para calcular a próxima calibração; o status fica “Indefinido”.', id);
+    }
+
+    // Custo
+    const custoLido = lerCusto(l.custo);
+    if (custoLido.motivo) {
+      avisos.add('custo_invalido', 'Custo vazio ou inválido',
+        'Esses custos não entram nas somas (equivalem a zero).', id);
+    }
+
+    // PRÓXIMA CALIBRAÇÃO = Data última calibração + período do Plano
+    const proxima = dataLida.data && plano ? somarMeses(dataLida.data, plano.meses) : null;
+
+    const situacao = textoLimpo(l.situacao);
+    registros.push({
+      id,
+      material: textoLimpo(l.material),
+      instrumento: textoLimpo(l.instrumento) || (equip ? equip.instrumento : ''),
+      setor: equip ? equip.setor : CONFIG.SETOR_SEM_CORRESPONDENCIA,
+      ultima: dataLida.data,
+      plano: textoLimpo(l.plano),
+      planoMeses: plano ? plano.meses : null,
+      proxima,
+      custo: custoLido.valor,
+      situacao,                              // texto ORIGINAL da planilha (nunca sobrescrito)
+      situacaoNorm: normalizarTexto(situacao),
+      linha: l._linha,
+      // preenchidos por classificarRegistros():
+      status: STATUS.INDEFINIDO,
+      dias: null
+    });
+  }
+
+  // 3) IDs que só existem em Equipamentos: informados, mas não viram equipamentos
+  for (const l of linhasEquip) {
+    const chave = chaveDoId(l.id);
+    if (chave && !idsUsados.has(chave)) {
+      avisos.add('eq_sem_base', 'IDs da aba Equipamentos que não existem na aba Base',
+        'Foram ignorados; nenhum equipamento é criado a partir deles.', textoLimpo(l.id));
+    }
+  }
+  return registros;
+}
+
+const estaForaDoEscopo = situacaoNorm => CONFIG.SITUACOES_FORA_DO_ESCOPO.includes(situacaoNorm);
+
+/**
+ * Status calculado da calibração, comparando a próxima calibração com a data de referência:
+ *   - Em atraso:          próxima calibração < referência
+ *   - Prestes a calibrar: 0 <= dias até a próxima <= DIAS_PRESTES (vencer hoje conta aqui)
+ *   - Em dia:             mais de DIAS_PRESTES dias
+ * Sucata é "Não aplicável"; sem data/plano válidos é "Indefinido".
+ */
+function calcularStatus(proxima, situacaoNorm, referencia) {
+  if (estaForaDoEscopo(situacaoNorm)) return { status: STATUS.NA, dias: null };
+  if (!proxima) return { status: STATUS.INDEFINIDO, dias: null };
+  const dias = diferencaEmDias(referencia, proxima);
+  if (dias < 0) return { status: STATUS.ATRASO, dias };
+  if (dias <= CONFIG.DIAS_PRESTES) return { status: STATUS.PRESTES, dias };
+  return { status: STATUS.EM_DIA, dias };
+}
+
+/** Recalcula o status de todos os registros (chamado ao importar e ao mudar a data de referência). */
+function classificarRegistros(registros, referencia) {
+  for (const r of registros) {
+    const { status, dias } = calcularStatus(r.proxima, r.situacaoNorm, referencia);
+    r.status = status;
+    r.dias = dias;
+  }
+}
+
+/* ============================================================
+   5. FILTROS E AGREGAÇÕES
+   ============================================================ */
+
+function passaPeriodo(r, periodo) {
+  if (periodo === 'todos') return true;
+  if (r.status === STATUS.NA || r.status === STATUS.INDEFINIDO) return false;
+  if (periodo === 'atrasados') return r.dias < 0;
+  return r.dias >= 0 && r.dias <= Number(periodo);
+}
+
+/**
+ * Aplica todos os filtros (combinados com E). "todos" não filtra.
+ * Ano e mês referem-se à PRÓXIMA calibração.
+ */
+function aplicarFiltros(registros, f) {
+  const ano = f.ano === 'todos' ? null : Number(f.ano);
+  const mes = f.mes === 'todos' ? null : Number(f.mes);
+  return registros.filter(r => {
+    if (!passaPeriodo(r, f.periodo)) return false;
+    if (ano !== null && (!r.proxima || r.proxima.getFullYear() !== ano)) return false;
+    if (mes !== null && (!r.proxima || r.proxima.getMonth() + 1 !== mes)) return false;
+    if (f.setor !== 'todos' && r.setor !== f.setor) return false;
+    if (f.situacao !== 'todos' && r.situacaoNorm !== f.situacao) return false;
+    if (f.status !== 'todos' && r.status.chave !== f.status) return false;
+    return true;
+  });
+}
+
+/** O custo do registro entra nas somas? (tem valor e não é de situação fora do escopo, se configurado) */
+function contaNoCusto(r) {
+  if (r.custo === null) return false;
+  return !(CONFIG.EXCLUIR_FORA_DO_ESCOPO_DOS_CUSTOS && estaForaDoEscopo(r.situacaoNorm));
+}
+
+/** Totais dos cartões, calculados sobre os registros já filtrados. */
+function calcularKPIs(regs) {
+  const k = {
+    total: regs.length, emDia: 0, prestes: 0, atraso: 0, naoAplicavel: 0, indefinido: 0,
+    emCalibracao: 0, emUso: 0, sucata: 0, custo: 0, custoExcluido: 0
+  };
+  for (const r of regs) {
+    if (r.status === STATUS.EM_DIA) k.emDia++;
+    else if (r.status === STATUS.PRESTES) k.prestes++;
+    else if (r.status === STATUS.ATRASO) k.atraso++;
+    else if (r.status === STATUS.NA) k.naoAplicavel++;
+    else k.indefinido++;
+
+    if (r.situacaoNorm === 'em calibracao') k.emCalibracao++;
+    else if (r.situacaoNorm === 'em uso') k.emUso++;
+    else if (r.situacaoNorm === 'sucata') k.sucata++;
+
+    if (r.custo !== null) {
+      if (contaNoCusto(r)) k.custo += r.custo; else k.custoExcluido += r.custo;
+    }
+  }
+  return k;
+}
+
+/**
+ * Lista contínua de meses ("AAAA-MM") do menor ao maior, sem buracos.
+ * Se anoFixo for informado, mostra o ano inteiro (jan–dez).
+ */
+function listaDeMeses(chavesPresentes, anoFixo) {
+  if (anoFixo) return Array.from({ length: 12 }, (_, i) => `${anoFixo}-${pad2(i + 1)}`);
+  if (!chavesPresentes.length) return [];
+  const ordenadas = [...chavesPresentes].sort();
+  const [a0, m0] = ordenadas[0].split('-').map(Number);
+  const [a1, m1] = ordenadas[ordenadas.length - 1].split('-').map(Number);
+  const totalMeses = (a1 * 12 + m1) - (a0 * 12 + m0) + 1;
+  if (totalMeses > 240) return ordenadas;            // intervalo absurdo: mostra só os meses existentes
+  return Array.from({ length: totalMeses }, (_, i) => {
+    const t = a0 * 12 + (m0 - 1) + i;
+    return `${Math.floor(t / 12)}-${pad2((t % 12) + 1)}`;
+  });
+}
+
+/**
+ * Equipamentos por mês da PRÓXIMA calibração, separados em:
+ *   - "A calibrar (no prazo)": status Em dia ou Prestes a calibrar
+ *   - "Em atraso":             status Em atraso
+ * Sucata e registros sem data não entram.
+ */
+function dadosEquipamentosPorMes(regs, f) {
+  const mapa = new Map();
+  for (const r of regs) {
+    if (!r.proxima || !STATUS_CLASSIFICADOS.includes(r.status)) continue;
+    const chave = chaveMes(r.proxima);
+    const item = mapa.get(chave) || { aCalibrar: 0, atraso: 0 };
+    if (r.status === STATUS.ATRASO) item.atraso++; else item.aCalibrar++;
+    mapa.set(chave, item);
+  }
+  const anoFixo = f.ano !== 'todos' && f.mes === 'todos' ? Number(f.ano) : null;
+  const meses = listaDeMeses([...mapa.keys()], anoFixo);
+  return {
+    rotulos: meses.map(rotuloMes),
+    aCalibrar: meses.map(m => (mapa.get(m) || {}).aCalibrar || 0),
+    atraso: meses.map(m => (mapa.get(m) || {}).atraso || 0)
+  };
+}
+
+/** Custo por mês, usando a próxima ou a última calibração como referência do mês. */
+function dadosCustoPorMes(regs, f, base) {
+  const campo = base === 'ultima' ? 'ultima' : 'proxima';
+  const mapa = new Map();
+  for (const r of regs) {
+    if (!r[campo] || !contaNoCusto(r)) continue;
+    const chave = chaveMes(r[campo]);
+    mapa.set(chave, (mapa.get(chave) || 0) + r.custo);
+  }
+  const anoFixo = campo === 'proxima' && f.ano !== 'todos' && f.mes === 'todos' ? Number(f.ano) : null;
+  const meses = listaDeMeses([...mapa.keys()], anoFixo);
+  return { rotulos: meses.map(rotuloMes), custos: meses.map(m => mapa.get(m) || 0) };
+}
+
+/** Quantidade de equipamentos e custo total por setor. */
+function dadosPorSetor(regs) {
+  const mapa = new Map();
+  for (const r of regs) {
+    const item = mapa.get(r.setor) || { setor: r.setor, qtd: 0, custo: 0 };
+    item.qtd++;
+    if (contaNoCusto(r)) item.custo += r.custo;
+    mapa.set(r.setor, item);
+  }
+  const lista = [...mapa.values()];
+  const porNome = (a, b) => a.setor.localeCompare(b.setor, 'pt-BR');
+  return {
+    custo: [...lista].sort((a, b) => b.custo - a.custo || porNome(a, b)),
+    qtd: [...lista].sort((a, b) => b.qtd - a.qtd || porNome(a, b))
+  };
+}
+
+/** Distribuição da coluna Situação (agrupa por texto normalizado; mostra o texto original). */
+function dadosPorSituacao(regs) {
+  const mapa = new Map();
+  for (const r of regs) {
+    const chave = r.situacaoNorm || '(vazio)';
+    const item = mapa.get(chave) || { chave, rotulo: r.situacao || '(sem situação)', qtd: 0 };
+    item.qtd++;
+    mapa.set(chave, item);
+  }
+  return [...mapa.values()].sort((a, b) => b.qtd - a.qtd || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+}
+
+/* ============================================================
+   6. GRÁFICOS (Chart.js)
+   ============================================================ */
+
+/** Plugin simples para escrever valores sobre as barras/fatias (evita dependência extra). */
+const pluginRotulos = {
+  id: 'rotulosValores',
+  afterDatasetsDraw(chart, _args, opcoes) {
+    if (!opcoes || !opcoes.modo) return;
+    const { ctx } = chart;
+    const familia = Chart.defaults.font.family;
+    ctx.save();
+    chart.data.datasets.forEach((ds, i) => {
+      const meta = chart.getDatasetMeta(i);
+      if (meta.hidden) return;
+      const total = ds.data.reduce((s, v) => s + (Number(v) || 0), 0);
+      meta.data.forEach((el, idx) => {
+        const v = Number(ds.data[idx]);
+        if (!v) return;
+        ctx.font = `600 11px ${familia}`;
+
+        if (opcoes.modo === 'rosca') {
+          const pct = (v / total) * 100;
+          if (pct < 4) return;
+          const ang = (el.startAngle + el.endAngle) / 2;
+          const raio = (el.innerRadius + el.outerRadius) / 2;
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(fmtPercentual.format(pct) + '%', el.x + Math.cos(ang) * raio, el.y + Math.sin(ang) * raio);
+          return;
+        }
+
+        const texto = opcoes.formato ? opcoes.formato(v) : fmtInteiro.format(v);
+        if (opcoes.modo === 'empilhado') {
+          if (Math.abs(el.base - el.y) < 16) return;       // segmento baixo demais para caber o número
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(texto, el.x, (el.y + el.base) / 2);
+        } else if (opcoes.modo === 'horizontal') {
+          ctx.fillStyle = '#14212B';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(texto, el.x + 6, el.y);
+        } else {                                            // 'topo'
+          ctx.fillStyle = '#14212B';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(texto, el.x, el.y - 4);
+        }
+      });
+    });
+    ctx.restore();
+  }
+};
+
+/** Plugin que escreve o total no centro da rosca. */
+const pluginCentroRosca = {
+  id: 'centroRosca',
+  afterDraw(chart, _args, opcoes) {
+    const meta = chart.getDatasetMeta(0);
+    if (!opcoes || opcoes.total === undefined || !meta.data.length) return;
+    const { x, y } = meta.data[0];
+    const { ctx } = chart;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#14212B';
+    ctx.font = `600 34px ${getComputedStyle(document.documentElement).getPropertyValue('--font-num')}`;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(fmtInteiro.format(opcoes.total), x, y + 6);
+    ctx.font = `500 12px ${Chart.defaults.font.family}`;
+    ctx.fillStyle = '#4B5C69';
+    ctx.fillText('equipamentos', x, y + 24);
+    ctx.restore();
+  }
+};
+
+/** Quebra um rótulo longo em várias linhas (para o eixo X dos setores). */
+function quebrarRotulo(texto, max = 14) {
+  const linhas = [];
+  let atual = '';
+  for (const palavra of String(texto).split(' ')) {
+    const tentativa = (atual + ' ' + palavra).trim();
+    if (tentativa.length > max && atual) { linhas.push(atual); atual = palavra; }
+    else atual = tentativa;
+  }
+  if (atual) linhas.push(atual);
+  return linhas;
+}
+
+const CORES_SITUACAO_FIXAS = {
+  'em uso': '#2D6A8F',
+  'em calibracao': '#7A5C9E',
+  'sucata': '#7C858C'
+};
+const PALETA_SITUACAO = ['#3A8F8B', '#B07A3A', '#5C7A9E', '#8A6F9E', '#6E8F3A', '#A65D6B'];
+function corDaSituacao(chave, posicao) {
+  return CORES_SITUACAO_FIXAS[chave] || PALETA_SITUACAO[posicao % PALETA_SITUACAO.length];
+}
+
+/** Cria os 5 gráficos uma única vez; depois só os dados são trocados. */
+function criarGraficos() {
+  if (typeof Chart === 'undefined') return null;
+  const css = getComputedStyle(document.documentElement);
+  const cor = nome => css.getPropertyValue(nome).trim();
+
+  Chart.defaults.font.family = css.getPropertyValue('--font-ui').trim();
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = cor('--ink-2');
+  Chart.defaults.borderColor = cor('--line-2');
+
+  const tituloEixo = texto => ({ display: true, text: texto, color: cor('--ink-3'), font: { weight: '500' } });
+  const legendaBaixo = { position: 'bottom', labels: { boxWidth: 12, boxHeight: 12, padding: 14 } };
+  const tituloTooltip = itens => {
+    const rot = itens[0].chart.data.labels[itens[0].dataIndex];
+    return Array.isArray(rot) ? rot.join(' ') : rot;
+  };
+  const base = { responsive: true, maintainAspectRatio: false, animation: { duration: 250 } };
+  const g = {};
+
+  g.meses = new Chart(document.getElementById('cMeses'), {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [
+        { label: 'A calibrar (no prazo)', data: [], backgroundColor: cor('--accent'), stack: 'q', borderRadius: 2, maxBarThickness: 46 },
+        { label: 'Em atraso', data: [], backgroundColor: cor('--bad'), stack: 'q', borderRadius: 2, maxBarThickness: 46 }
+      ]
+    },
+    options: {
+      ...base,
+      scales: {
+        x: { stacked: true, grid: { display: false }, title: tituloEixo('Mês/Ano') },
+        y: { stacked: true, beginAtZero: true, ticks: { precision: 0 }, title: tituloEixo('Quantidade de equipamentos') }
+      },
+      plugins: {
+        legend: legendaBaixo,
+        rotulosValores: { modo: 'empilhado' },
+        tooltip: {
+          callbacks: {
+            title: tituloTooltip,
+            label: c => ` ${c.dataset.label}: ${fmtInteiro.format(c.parsed.y)}`,
+            footer: itens => `Total: ${fmtInteiro.format(itens.reduce((s, i) => s + i.parsed.y, 0))}`
+          }
+        }
+      }
+    },
+    plugins: [pluginRotulos]
+  });
+
+  g.custoMes = new Chart(document.getElementById('cCustoMes'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label: 'Custo', data: [], backgroundColor: cor('--accent'), borderRadius: 2, maxBarThickness: 54 }] },
+    options: {
+      ...base,
+      layout: { padding: { top: 18 } },
+      scales: {
+        x: { grid: { display: false }, title: tituloEixo('Mês/Ano') },
+        y: { beginAtZero: true, title: tituloEixo('Custo'), ticks: { callback: v => fmtMoedaInteira.format(v) } }
+      },
+      plugins: {
+        legend: { display: false },
+        rotulosValores: { modo: 'topo', formato: v => fmtMoedaInteira.format(v) },
+        tooltip: { callbacks: { title: tituloTooltip, label: c => ` Custo: ${fmtMoeda.format(c.parsed.y)}` } }
+      }
+    },
+    plugins: [pluginRotulos]
+  });
+
+  g.custoSetor = new Chart(document.getElementById('cCustoSetor'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label: 'Custo total', data: [], backgroundColor: cor('--accent'), borderRadius: 2, maxBarThickness: 60 }] },
+    options: {
+      ...base,
+      layout: { padding: { top: 18 } },
+      scales: {
+        x: { grid: { display: false }, title: tituloEixo('Setor') },
+        y: { beginAtZero: true, title: tituloEixo('Custo total'), ticks: { callback: v => fmtMoedaInteira.format(v) } }
+      },
+      plugins: {
+        legend: { display: false },
+        rotulosValores: { modo: 'topo', formato: v => fmtMoedaInteira.format(v) },
+        tooltip: { callbacks: { title: tituloTooltip, label: c => ` Custo total: ${fmtMoeda.format(c.parsed.y)}` } }
+      }
+    },
+    plugins: [pluginRotulos]
+  });
+
+  g.qtdSetor = new Chart(document.getElementById('cQtdSetor'), {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label: 'Equipamentos', data: [], backgroundColor: cor('--graphite-2'), borderRadius: 2, maxBarThickness: 28 }] },
+    options: {
+      ...base,
+      indexAxis: 'y',
+      layout: { padding: { right: 36 } },
+      scales: {
+        x: { beginAtZero: true, ticks: { precision: 0 }, title: tituloEixo('Quantidade de equipamentos') },
+        y: { grid: { display: false }, title: tituloEixo('Setor') }
+      },
+      plugins: {
+        legend: { display: false },
+        rotulosValores: { modo: 'horizontal' },
+        tooltip: { callbacks: { title: tituloTooltip, label: c => ` Equipamentos: ${fmtInteiro.format(c.parsed.x)}` } }
+      }
+    },
+    plugins: [pluginRotulos]
+  });
+
+  g.situacao = new Chart(document.getElementById('cSituacao'), {
+    type: 'doughnut',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#fff', borderWidth: 2 }] },
+    options: {
+      ...base,
+      cutout: '58%',
+      plugins: {
+        legend: { display: false },                      // a legenda é montada em HTML (com quantidade e %)
+        rotulosValores: { modo: 'rosca' },
+        centroRosca: { total: 0 },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              const total = c.dataset.data.reduce((s, v) => s + v, 0);
+              return ` ${c.label}: ${fmtInteiro.format(c.parsed)} (${porcentagem(c.parsed, total)})`;
+            }
+          }
+        }
+      }
+    },
+    plugins: [pluginRotulos, pluginCentroRosca]
+  });
+
+  return g;
+}
+
+/* ============================================================
+   7. TABELA
+   ============================================================ */
+const COLUNAS_TABELA = [
+  { chave: 'id',          rotulo: 'ID equipamento',      valor: r => r.id },
+  { chave: 'material',    rotulo: 'Material',            valor: r => r.material },
+  { chave: 'instrumento', rotulo: 'Instrumento',         valor: r => r.instrumento },
+  { chave: 'setor',       rotulo: 'Setor',               valor: r => r.setor },
+  { chave: 'ultima',      rotulo: 'Última calibração',   valor: r => (r.ultima ? r.ultima.getTime() : null) },
+  { chave: 'plano',       rotulo: 'Plano',               valor: r => r.planoMeses },
+  { chave: 'proxima',     rotulo: 'Próxima calibração',  valor: r => (r.proxima ? r.proxima.getTime() : null) },
+  { chave: 'custo',       rotulo: 'Custo',               valor: r => r.custo, numerica: true },
+  { chave: 'situacao',    rotulo: 'Situação (planilha)', valor: r => r.situacao },
+  { chave: 'status',      rotulo: 'Status da calibração', valor: r => r.status.ordem }
+];
+
+/** Texto usado pela pesquisa (sem acento, minúsculo): todos os campos visíveis da linha. */
+function textoDeBusca(r) {
+  return normalizarTexto([
+    r.id, r.material, r.instrumento, r.setor, formatarData(r.ultima), r.plano,
+    formatarData(r.proxima), r.custo === null ? '' : `${fmtMoeda.format(r.custo)} ${r.custo}`,
+    r.situacao, r.status.rotulo
+  ].join(' | '));
+}
+
+/** Compara dois valores; vazios (null) vão sempre para o fim. */
+function compararValores(a, b, direcao) {
+  const aVazio = a === null || a === undefined || a === '';
+  const bVazio = b === null || b === undefined || b === '';
+  if (aVazio && bVazio) return 0;
+  if (aVazio) return 1;
+  if (bVazio) return -1;
+  const cmp = (typeof a === 'number' && typeof b === 'number')
+    ? a - b
+    : String(a).localeCompare(String(b), 'pt-BR', { numeric: true, sensitivity: 'base' });
+  return direcao === 'asc' ? cmp : -cmp;
+}
+
+function registrosDaTabela(filtrados, busca, ordem) {
+  let lista = filtrados;
+  const termos = normalizarTexto(busca).split(' ').filter(Boolean);
+  if (termos.length) {
+    lista = lista.filter(r => {
+      const texto = textoDeBusca(r);
+      return termos.every(t => texto.includes(t));
+    });
+  }
+  const coluna = COLUNAS_TABELA.find(c => c.chave === ordem.chave) || COLUNAS_TABELA[0];
+  return [...lista].sort((x, y) =>
+    compararValores(coluna.valor(x), coluna.valor(y), ordem.dir) || compararValores(x.id, y.id, 'asc'));
+}
+
+/* ============================================================
+   8. INTERFACE
+   ============================================================ */
+const estado = {
+  arquivo: null,
+  handle: null,
+  registros: [],
+  filtrados: [],
+  referencia: null,
+  referenciaPersonalizada: false,
+  filtros: { periodo: 'todos', ano: 'todos', mes: 'todos', setor: 'todos', situacao: 'todos', status: 'todos' },
+  baseCusto: 'proxima',
+  tabela: { busca: '', ordem: { chave: 'proxima', dir: 'asc' }, pagina: 1, tamanho: 25 },
+  graficos: null
+};
+
+const $ = id => document.getElementById(id);
+const SELECTS = {
+  periodo: 'fPeriodo', ano: 'fAno', mes: 'fMes', setor: 'fSetor', situacao: 'fSituacao', status: 'fStatus'
+};
+
+/* ---------- Mensagens ---------- */
+function renderValidacao({ erros = [], avisos = [], resumo = '' }) {
+  const partes = [];
+
+  if (erros.length) {
+    partes.push(`
+      <div class="alerta alerta--erro" role="alert">
+        <strong>Não foi possível importar a planilha.</strong>
+        <ul>${erros.map(e => `<li><strong>${escapeHtml(e.titulo)}</strong>${
+          e.detalhe ? `<span class="alerta__desc">${escapeHtml(e.detalhe)}</span>` : ''}</li>`).join('')}</ul>
+        ${estado.registros.length ? '<p>Os dados carregados anteriormente foram mantidos.</p>' : ''}
+      </div>`);
+  } else if (avisos.length) {
+    const itens = avisos.map(a => {
+      const mostrar = a.itens.slice(0, 8).map(escapeHtml).join(', ');
+      const resto = a.total > 8 ? ` e mais ${fmtInteiro.format(a.total - 8)}` : '';
+      return `<li><strong>${escapeHtml(a.titulo)}</strong> (${fmtInteiro.format(a.total)})
+        <span class="alerta__desc">${escapeHtml(a.descricao)}</span>
+        <span class="alerta__ids">${mostrar}${resto}</span></li>`;
+    }).join('');
+    partes.push(`
+      <details class="alerta alerta--aviso" open>
+        <summary>${escapeHtml(resumo)} Há ${avisos.length} ponto(s) de atenção na planilha.</summary>
+        <ul>${itens}</ul>
+      </details>`);
+  } else if (resumo) {
+    partes.push(`<div class="alerta alerta--ok" role="status"><strong>${escapeHtml(resumo)}</strong>
+      As abas, colunas, IDs, datas, planos e custos estão consistentes.</div>`);
+  }
+
+  const el = $('validacao');
+  el.innerHTML = partes.join('');
+  el.hidden = partes.length === 0;
+}
+
+function definirCarregando(carregando) {
+  $('btnSelecionar').disabled = carregando;
+  $('btnAtualizar').disabled = carregando;
+}
+
+/* ---------- Importação ---------- */
+
+/**
+ * Abre o seletor de arquivo. No Chrome/Edge usa a File System Access API, que guarda um
+ * "handle" do arquivo: assim o botão "Atualizar dados" sempre lê a versão salva mais recente
+ * (a referência File comum é recusada pelo navegador depois que o arquivo muda no disco).
+ * Nos demais navegadores usa o <input type="file"> tradicional.
+ */
+async function selecionarPlanilha() {
+  if (typeof window.showOpenFilePicker === 'function') {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        multiple: false,
+        types: [{
+          description: 'Planilha Excel',
+          accept: {
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+            'application/vnd.ms-excel.sheet.macroEnabled.12': ['.xlsm'],
+            'application/vnd.ms-excel': ['.xls']
+          }
+        }]
+      });
+      const arquivo = await handle.getFile();
+      await processarArquivo(arquivo, 'selecionar', handle);
+      return;
+    } catch (erro) {
+      if (erro && erro.name === 'AbortError') return;   // usuário cancelou
+      // Qualquer outro erro (ex.: ambiente restrito): usa o seletor tradicional
+    }
+  }
+  $('fileInput').click();
+}
+
+/** Reprocessa a última planilha, relendo-a do disco; se não der, pede para selecionar de novo. */
+async function atualizarDados() {
+  if (!estado.arquivo) return selecionarPlanilha();
+  let arquivo = estado.arquivo;
+  if (estado.handle) {
+    try {
+      arquivo = await estado.handle.getFile();          // versão mais recente salva no disco
+    } catch (erro) {
+      estado.handle = null;
+      return selecionarPlanilha();
+    }
+  }
+  return processarArquivo(arquivo, 'atualizar', estado.handle);
+}
+
+async function processarArquivo(arquivo, origem, handle = null) {
+  if (typeof XLSX === 'undefined') {
+    renderValidacao({ erros: [{
+      titulo: 'A biblioteca SheetJS não foi carregada',
+      detalhe: 'Ela é baixada por CDN. Verifique a conexão com a internet e recarregue a página.'
+    }] });
+    return false;
+  }
+  if (!/\.(xlsx|xlsm|xls)$/i.test(arquivo.name)) {
+    renderValidacao({ erros: [{
+      titulo: 'Formato de arquivo não suportado',
+      detalhe: `“${arquivo.name}” não é uma planilha Excel. Selecione o Base_Cali.xlsx.`
+    }] });
+    return false;
+  }
+
+  definirCarregando(true);
+  let workbook;
+  try {
+    const buffer = await arquivo.arrayBuffer();
+    workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+  } catch (erro) {
+    console.error(erro);
+    definirCarregando(false);
+    if (origem === 'atualizar') {
+      // O navegador recusou reler o arquivo (ele mudou no disco): abre a seleção automaticamente.
+      renderValidacao({ erros: [{
+        titulo: 'O navegador não permitiu reler a planilha',
+        detalhe: 'Isso acontece quando o arquivo é salvo de novo depois de selecionado. Escolha-o outra vez na janela que vai abrir.'
+      }] });
+      selecionarPlanilha();
+    } else {
+      renderValidacao({ erros: [{
+        titulo: 'Não foi possível ler o arquivo',
+        detalhe: 'Confirme se é um .xlsx válido, sem proteção por senha e que não esteja aberto de forma exclusiva por outro programa.'
+      }] });
+    }
+    return false;
+  }
+
+  let resultado;
+  try {
+    resultado = interpretarPlanilha(workbook);
+  } catch (erro) {
+    console.error(erro);
+    renderValidacao({ erros: [{ titulo: 'Erro inesperado ao processar a planilha', detalhe: String(erro.message || erro) }] });
+    definirCarregando(false);
+    return false;
+  }
+
+  if (resultado.erros.length) {
+    renderValidacao({ erros: resultado.erros });
+    definirCarregando(false);
+    return false;
+  }
+
+  // Sucesso: substitui os dados anteriores por completo
+  estado.arquivo = arquivo;
+  estado.handle = handle;
+  estado.registros = resultado.registros;
+  if (!estado.referenciaPersonalizada) estado.referencia = hojeSemHora();
+  classificarRegistros(estado.registros, estado.referencia);
+
+  $('estadoVazio').hidden = true;
+  $('painel').hidden = false;
+  if (!estado.graficos) estado.graficos = criarGraficos();
+
+  preencherFiltrosDinamicos();
+  atualizarCabecalhoArquivo();
+  renderTudo();
+
+  const resumo = `${fmtInteiro.format(estado.registros.length)} equipamentos importados de ${arquivo.name}.`;
+  renderValidacao({ avisos: resultado.avisos, resumo });
+  definirCarregando(false);
+  return true;
+}
+
+function atualizarCabecalhoArquivo() {
+  const agora = new Date();
+  $('arquivoNome').textContent = estado.arquivo.name;
+  $('arquivoNome').title = estado.arquivo.name;
+  $('arquivoDetalhe').textContent =
+    `${fmtInteiro.format(estado.registros.length)} equipamentos, atualizado em ` +
+    `${formatarData(agora)} ${pad2(agora.getHours())}:${pad2(agora.getMinutes())}`;
+}
+
+/* ---------- Filtros ---------- */
+function preencherSelect(select, opcoes, valorAtual) {
+  const todas = [{ valor: 'todos', rotulo: 'Todos' }, ...opcoes.filter(o => o.valor !== 'todos')];
+  select.innerHTML = todas.map(o =>
+    `<option value="${escapeHtml(o.valor)}">${escapeHtml(o.rotulo)}</option>`).join('');
+  const existe = todas.some(o => o.valor === valorAtual);
+  select.value = existe ? valorAtual : 'todos';
+  return select.value;
+}
+
+/** Opções que dependem dos dados (anos, setores, situações, status): tudo gerado a partir da planilha. */
+function preencherFiltrosDinamicos() {
+  const f = estado.filtros;
+  const anos = [...new Set(estado.registros.filter(r => r.proxima).map(r => r.proxima.getFullYear()))].sort((a, b) => a - b);
+  f.ano = preencherSelect($(SELECTS.ano), anos.map(a => ({ valor: String(a), rotulo: String(a) })), f.ano);
+
+  const setores = [...new Set(estado.registros.map(r => r.setor))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  f.setor = preencherSelect($(SELECTS.setor), setores.map(s => ({ valor: s, rotulo: s })), f.setor);
+
+  const situacoes = new Map();
+  for (const r of estado.registros) {
+    const chave = r.situacaoNorm || '(vazio)';
+    if (!situacoes.has(chave)) situacoes.set(chave, r.situacao || '(sem situação)');
+  }
+  const listaSit = [...situacoes].map(([valor, rotulo]) => ({ valor, rotulo }))
+    .sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+  f.situacao = preencherSelect($(SELECTS.situacao), listaSit, f.situacao);
+
+  f.status = preencherSelect($(SELECTS.status),
+    LISTA_STATUS.map(s => ({ valor: s.chave, rotulo: s.rotulo })), f.status);
+}
+
+function setFiltro(nome, valor) {
+  const select = $(SELECTS[nome]);
+  if (![...select.options].some(o => o.value === valor)) return;
+  select.value = valor;
+  estado.filtros[nome] = valor;
+  renderTudo();
+}
+
+function limparFiltros() {
+  for (const nome of Object.keys(SELECTS)) {
+    estado.filtros[nome] = 'todos';
+    $(SELECTS[nome]).value = 'todos';
+  }
+  renderTudo();
+}
+
+/* ---------- Renderização ---------- */
+function renderTudo() {
+  estado.filtrados = aplicarFiltros(estado.registros, estado.filtros);
+  estado.tabela.pagina = 1;
+  renderKPIs();
+  renderGraficos();
+  renderTabela();
+}
+
+function renderKPIs() {
+  const k = calcularKPIs(estado.filtrados);
+  const set = (id, texto) => { $(id).textContent = texto; };
+
+  set('kpiTotal', fmtInteiro.format(k.total));
+  set('kpiCusto', fmtMoeda.format(k.custo));
+  set('kpiCustoNota', k.custoExcluido > 0
+    ? `sem sucata (${fmtMoeda.format(k.custoExcluido)} excluídos)`
+    : 'soma da coluna Custo');
+
+  set('kpiEmDia', fmtInteiro.format(k.emDia));
+  set('kpiPrestes', fmtInteiro.format(k.prestes));
+  set('kpiAtraso', fmtInteiro.format(k.atraso));
+  set('pctEmDia', porcentagem(k.emDia, k.total));
+  set('pctPrestes', porcentagem(k.prestes, k.total));
+  set('pctAtraso', porcentagem(k.atraso, k.total));
+
+  set('kpiEmCalibracao', fmtInteiro.format(k.emCalibracao));
+  set('kpiEmUso', fmtInteiro.format(k.emUso));
+  set('kpiSucata', fmtInteiro.format(k.sucata));
+  set('pctEmCalibracao', `${porcentagem(k.emCalibracao, k.total)} do total`);
+  set('pctEmUso', `${porcentagem(k.emUso, k.total)} do total`);
+  set('pctSucata', `${porcentagem(k.sucata, k.total)} do total`);
+
+  // Régua de calibração: proporção entre os três status calculados
+  const classificados = k.emDia + k.prestes + k.atraso;
+  const regua = $('regua');
+  if (!classificados) {
+    regua.innerHTML = '<span class="regua__vazia">Nenhum equipamento classificado neste filtro</span>';
+    regua.setAttribute('aria-label', 'Nenhum equipamento classificado');
+  } else {
+    const seg = (chave, qtd, rotulo) => {
+      if (!qtd) return '';
+      const pct = (qtd / classificados) * 100;
+      const texto = pct >= 8 ? `${fmtPercentual.format(pct)}%` : '';
+      return `<div class="regua__seg regua__seg--${chave}" style="flex:${qtd} 1 0" title="${rotulo}: ${fmtInteiro.format(qtd)} (${fmtPercentual.format(pct)}%)">${texto}</div>`;
+    };
+    regua.innerHTML = seg('em_dia', k.emDia, 'Em dia') + seg('prestes', k.prestes, 'Prestes a calibrar') + seg('atraso', k.atraso, 'Em atraso');
+    regua.setAttribute('aria-label',
+      `Em dia ${porcentagem(k.emDia, classificados)}, prestes a calibrar ${porcentagem(k.prestes, classificados)}, em atraso ${porcentagem(k.atraso, classificados)}`);
+  }
+
+  // Cartões clicáveis refletem o filtro ativo
+  document.querySelectorAll('.tile[data-filtro]').forEach(tile => {
+    const ativo = estado.filtros[tile.dataset.filtro] === tile.dataset.valor;
+    tile.setAttribute('aria-pressed', String(ativo));
+  });
+}
+
+/** Mostra/oculta a mensagem de "sem dados" de um gráfico. */
+function alternarVazio(idCanvas, vazio) {
+  const corpo = $('corpo-' + idCanvas);
+  corpo.querySelector('.graf__vazio').hidden = !vazio;
+}
+
+function renderGraficos() {
+  const g = estado.graficos;
+  if (!g) {
+    $('graficos').insertAdjacentHTML('afterbegin',
+      '<p class="alerta alerta--erro" style="grid-column:1/-1">Não foi possível carregar o Chart.js. Verifique a conexão com a internet e recarregue a página.</p>');
+    return;
+  }
+  const regs = estado.filtrados;
+  const f = estado.filtros;
+
+  // Equipamentos por mês
+  const meses = dadosEquipamentosPorMes(regs, f);
+  g.meses.data.labels = meses.rotulos;
+  g.meses.data.datasets[0].data = meses.aCalibrar;
+  g.meses.data.datasets[1].data = meses.atraso;
+  g.meses.update();
+  alternarVazio('cMeses', ![...meses.aCalibrar, ...meses.atraso].some(v => v > 0));
+
+  // Custo mensal
+  const custoMes = dadosCustoPorMes(regs, f, estado.baseCusto);
+  g.custoMes.data.labels = custoMes.rotulos;
+  g.custoMes.data.datasets[0].data = custoMes.custos;
+  g.custoMes.update();
+  alternarVazio('cCustoMes', !custoMes.custos.some(v => v > 0));
+  $('custoMesAjuda').textContent = estado.baseCusto === 'proxima'
+    ? 'Custo previsto da calibração que vence em cada mês (próxima calibração).'
+    : 'Custo das calibrações realizadas em cada mês (última calibração). Os filtros de ano e mês continuam usando a próxima calibração.';
+
+  // Setores
+  const setores = dadosPorSetor(regs);
+  g.custoSetor.data.labels = setores.custo.map(s => quebrarRotulo(s.setor));
+  g.custoSetor.data.datasets[0].data = setores.custo.map(s => s.custo);
+  g.custoSetor.update();
+  alternarVazio('cCustoSetor', !setores.custo.length);
+
+  g.qtdSetor.data.labels = setores.qtd.map(s => s.setor);
+  g.qtdSetor.data.datasets[0].data = setores.qtd.map(s => s.qtd);
+  $('corpo-cQtdSetor').style.height = `${Math.max(300, setores.qtd.length * 38 + 90)}px`; // cresce com muitos setores
+  g.qtdSetor.resize();
+  g.qtdSetor.update();
+  alternarVazio('cQtdSetor', !setores.qtd.length);
+
+  // Situação (rosca + legenda HTML com quantidade e percentual)
+  const situacao = dadosPorSituacao(regs);
+  const total = situacao.reduce((s, i) => s + i.qtd, 0);
+  const cores = situacao.map((s, i) => corDaSituacao(s.chave, i));
+  g.situacao.data.labels = situacao.map(s => s.rotulo);
+  g.situacao.data.datasets[0].data = situacao.map(s => s.qtd);
+  g.situacao.data.datasets[0].backgroundColor = cores;
+  g.situacao.options.plugins.centroRosca.total = total;
+  g.situacao.update();
+  alternarVazio('cSituacao', total === 0);
+  $('legendaSituacao').innerHTML = situacao.map((s, i) => `
+    <li><span class="legenda__cor" style="background:${cores[i]}"></span>
+      <span class="legenda__nome">${escapeHtml(s.rotulo)}</span>
+      <span class="legenda__qtd">${fmtInteiro.format(s.qtd)}</span>
+      <span class="legenda__pct">${porcentagem(s.qtd, total)}</span></li>`).join('');
+}
+
+/* ---------- Tabela ---------- */
+function montarCabecalhoTabela() {
+  $('cabecalhoTabela').innerHTML = COLUNAS_TABELA.map(c => `
+    <th scope="col" data-col="${c.chave}" class="${c.numerica ? 'num' : ''}" aria-sort="none">
+      <button type="button">${escapeHtml(c.rotulo)}<span class="seta" aria-hidden="true"></span></button>
+    </th>`).join('');
+}
+
+function atualizarSetasOrdenacao() {
+  const { chave, dir } = estado.tabela.ordem;
+  document.querySelectorAll('#cabecalhoTabela th').forEach(th => {
+    const ativa = th.dataset.col === chave;
+    th.setAttribute('aria-sort', ativa ? (dir === 'asc' ? 'ascending' : 'descending') : 'none');
+    th.querySelector('.seta').textContent = ativa ? (dir === 'asc' ? '▲' : '▼') : '';
+  });
+}
+
+function renderTabela() {
+  const t = estado.tabela;
+  const lista = registrosDaTabela(estado.filtrados, t.busca, t.ordem);
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / t.tamanho));
+  t.pagina = Math.min(Math.max(1, t.pagina), totalPaginas);
+  const inicio = (t.pagina - 1) * t.tamanho;
+  const pagina = lista.slice(inicio, inicio + t.tamanho);
+
+  $('corpoTabela').innerHTML = pagina.length
+    ? pagina.map(r => `
+      <tr>
+        <td class="id">${escapeHtml(r.id)}</td>
+        <td>${escapeHtml(r.material || '—')}</td>
+        <td class="instr">${escapeHtml(r.instrumento || '—')}</td>
+        <td class="setor">${escapeHtml(r.setor)}</td>
+        <td>${formatarData(r.ultima)}</td>
+        <td>${escapeHtml(r.plano || '—')}</td>
+        <td>${formatarData(r.proxima)}</td>
+        <td class="num">${r.custo === null ? '—' : fmtMoeda.format(r.custo)}</td>
+        <td><span class="chip ${r.situacao ? '' : 'chip--vazio'}">${escapeHtml(r.situacao || 'sem situação')}</span></td>
+        <td><span class="badge badge--${r.status.chave}">${escapeHtml(r.status.rotulo)}</span></td>
+      </tr>`).join('')
+    : `<tr><td class="tabela__vazia" colspan="${COLUNAS_TABELA.length}">Nenhum equipamento encontrado para os filtros e a pesquisa atuais.</td></tr>`;
+
+  const de = lista.length ? inicio + 1 : 0;
+  const ate = inicio + pagina.length;
+  $('infoTabela').textContent = t.busca.trim()
+    ? `Mostrando ${fmtInteiro.format(de)}–${fmtInteiro.format(ate)} de ${fmtInteiro.format(lista.length)} (pesquisa) em ${fmtInteiro.format(estado.filtrados.length)} filtrados`
+    : `Mostrando ${fmtInteiro.format(de)}–${fmtInteiro.format(ate)} de ${fmtInteiro.format(lista.length)} equipamentos`;
+
+  $('paginacao').innerHTML = `
+    <button type="button" class="btn btn--pequeno" data-pag="primeira" ${t.pagina === 1 ? 'disabled' : ''}>Primeira</button>
+    <button type="button" class="btn btn--pequeno" data-pag="anterior" ${t.pagina === 1 ? 'disabled' : ''}>Anterior</button>
+    <span class="paginacao__pagina">Página ${fmtInteiro.format(t.pagina)} de ${fmtInteiro.format(totalPaginas)}</span>
+    <button type="button" class="btn btn--pequeno" data-pag="proxima" ${t.pagina === totalPaginas ? 'disabled' : ''}>Próxima</button>
+    <button type="button" class="btn btn--pequeno" data-pag="ultima" ${t.pagina === totalPaginas ? 'disabled' : ''}>Última</button>`;
+  $('paginacao').dataset.total = totalPaginas;
+
+  atualizarSetasOrdenacao();
+}
+
+/* ---------- Eventos ---------- */
+function configurarEventos() {
+  const input = $('fileInput');
+
+  $('btnSelecionar').addEventListener('click', selecionarPlanilha);
+  input.addEventListener('change', () => {
+    const arquivo = input.files && input.files[0];
+    input.value = '';                    // permite escolher o mesmo arquivo de novo
+    if (arquivo) processarArquivo(arquivo, 'selecionar');
+  });
+
+  // "Atualizar dados": reprocessa a última planilha; sem planilha, abre o seletor.
+  $('btnAtualizar').addEventListener('click', atualizarDados);
+
+  // Arrastar e soltar
+  let contadorArraste = 0;
+  window.addEventListener('dragenter', e => {
+    if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { contadorArraste++; document.body.classList.add('arrastando'); }
+  });
+  window.addEventListener('dragleave', () => {
+    contadorArraste = Math.max(0, contadorArraste - 1);
+    if (!contadorArraste) document.body.classList.remove('arrastando');
+  });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    contadorArraste = 0;
+    document.body.classList.remove('arrastando');
+    const arquivo = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (arquivo) processarArquivo(arquivo, 'selecionar');
+  });
+
+  // Filtros em lista suspensa
+  for (const [nome, id] of Object.entries(SELECTS)) {
+    $(id).addEventListener('change', e => { estado.filtros[nome] = e.target.value; renderTudo(); });
+  }
+  $('btnLimpar').addEventListener('click', limparFiltros);
+
+  // Data de referência (para análises "como se hoje fosse...")
+  $('fReferencia').addEventListener('change', e => {
+    const data = inputParaData(e.target.value);
+    estado.referenciaPersonalizada = !!data;
+    estado.referencia = data || hojeSemHora();
+    if (!data) e.target.value = dataParaInput(estado.referencia);
+    aplicarNovaReferencia();
+  });
+  $('btnHoje').addEventListener('click', () => {
+    estado.referenciaPersonalizada = false;
+    estado.referencia = hojeSemHora();
+    $('fReferencia').value = dataParaInput(estado.referencia);
+    aplicarNovaReferencia();
+  });
+
+  // Cartões clicáveis funcionam como atalho de filtro (clicar de novo remove)
+  document.querySelectorAll('.tile[data-filtro]').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const nome = tile.dataset.filtro;
+      setFiltro(nome, estado.filtros[nome] === tile.dataset.valor ? 'todos' : tile.dataset.valor);
+    });
+  });
+
+  // Base do gráfico de custo mensal
+  document.querySelectorAll('input[name="baseCusto"]').forEach(radio => {
+    radio.addEventListener('change', e => { estado.baseCusto = e.target.value; renderGraficos(); });
+  });
+
+  // Tabela
+  let temporizador;
+  $('busca').addEventListener('input', e => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => { estado.tabela.busca = e.target.value; estado.tabela.pagina = 1; renderTabela(); }, 150);
+  });
+  $('tamPagina').addEventListener('change', e => { estado.tabela.tamanho = Number(e.target.value); estado.tabela.pagina = 1; renderTabela(); });
+  $('cabecalhoTabela').addEventListener('click', e => {
+    const th = e.target.closest('th');
+    if (!th) return;
+    const ordem = estado.tabela.ordem;
+    ordem.dir = ordem.chave === th.dataset.col && ordem.dir === 'asc' ? 'desc' : 'asc';
+    ordem.chave = th.dataset.col;
+    estado.tabela.pagina = 1;
+    renderTabela();
+  });
+  $('paginacao').addEventListener('click', e => {
+    const botao = e.target.closest('button[data-pag]');
+    if (!botao) return;
+    const t = estado.tabela;
+    const ultima = Number($('paginacao').dataset.total);
+    if (botao.dataset.pag === 'primeira') t.pagina = 1;
+    if (botao.dataset.pag === 'anterior') t.pagina--;
+    if (botao.dataset.pag === 'proxima') t.pagina++;
+    if (botao.dataset.pag === 'ultima') t.pagina = ultima;
+    renderTabela();
+  });
+}
+
+/** Mudou a data de referência: o status de todos os equipamentos é recalculado. */
+function aplicarNovaReferencia() {
+  if (!estado.registros.length) return;
+  classificarRegistros(estado.registros, estado.referencia);
+  renderTudo();
+}
+
+function init() {
+  estado.referencia = hojeSemHora();
+  $('fReferencia').value = dataParaInput(estado.referencia);
+  document.querySelectorAll('[data-dias]').forEach(el => { el.textContent = CONFIG.DIAS_PRESTES; });
+
+  preencherSelect($(SELECTS.periodo), PERIODOS, 'todos');
+  preencherSelect($(SELECTS.mes), NOMES_MESES.map((nome, i) => ({ valor: String(i + 1), rotulo: nome })), 'todos');
+  montarCabecalhoTabela();
+  atualizarSetasOrdenacao();
+  configurarEventos();
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', init);
+}
+
+// Exporta funções puras para testes automatizados em Node (não afeta o navegador).
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    CONFIG, STATUS, lerDataDaCelula, lerPlano, lerCusto, somarMeses, diferencaEmDias, criarData,
+    interpretarPlanilha, classificarRegistros, calcularStatus, aplicarFiltros, calcularKPIs,
+    dadosEquipamentosPorMes, dadosCustoPorMes, dadosPorSetor, dadosPorSituacao,
+    registrosDaTabela, formatarData, normalizarTexto
+  };
+}
+
+</script>
+</body>
+</html>
